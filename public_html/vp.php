@@ -7,7 +7,7 @@ session_start();
 const ROOT_DIR = __DIR__;
 const JOB_DIR_NAME = '.vp_jobs';
 const LOG_FILE_NAME = 'vp.log';
-const APP_PASSWORD_HASH = '$2y$10$1z8l2lkFBjvD.nk0KyaGquiFxLB1Ong9r08XQuoaMuNGuBsRgBukq';
+const APP_PASSWORD_HASH = '__REPLACE_WITH_PASSWORD_HASH__';
 const MAX_ERROR_KEEP = 10;
 
 function now_iso(): string
