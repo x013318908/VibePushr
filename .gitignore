@@ -1,0 +1,13 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts
+public_html/.vp_jobs/
+public_html/.vp_unit_tmp/
+public_html/vp.log
+
+# Dev dependencies / cache
+dev/vendor/
+dev/.phpunit.cache/
+
