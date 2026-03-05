@@ -7,7 +7,7 @@ session_start();
 const ROOT_DIR = __DIR__;
 const JOB_DIR_NAME = '.vp_jobs';
 const LOG_FILE_NAME = 'vp.log';
-const APP_PASSWORD_HASH = '__REPLACE_WITH_PASSWORD_HASH__';
+const AUTH_FILE_NAME = '.vp_auth.php';
 const MAX_ERROR_KEEP = 10;
 
 function now_iso(): string
@@ -76,6 +76,34 @@ function log_audit(string $message): void
 {
     $line = sprintf('[%s] %s %s' . "\n", now_iso(), $_SERVER['REMOTE_ADDR'] ?? '-', $message);
     @file_put_contents(ROOT_DIR . DIRECTORY_SEPARATOR . LOG_FILE_NAME, $line, FILE_APPEND | LOCK_EX);
+}
+
+function auth_file_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . AUTH_FILE_NAME;
+}
+
+function load_password_hash_from_file(): ?string
+{
+    $path = auth_file_path();
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $data = @require $path;
+    if (!is_array($data)) {
+        return null;
+    }
+
+    $hash = $data['hash'] ?? null;
+    return is_string($hash) && $hash !== '' ? $hash : null;
+}
+
+function save_password_hash_file(string $hash): bool
+{
+    $path = auth_file_path();
+    $content = "<?php\nreturn ['hash' => " . var_export($hash, true) . "];\n";
+    return @file_put_contents($path, $content, LOCK_EX) !== false;
 }
 
 function normalize_relpath(string $relpath): ?string
@@ -289,6 +317,8 @@ if (defined('VP_UNIT_TEST_MODE') && VP_UNIT_TEST_MODE === true) {
     return;
 }
 
+$effectiveHash = load_password_hash_from_file() ?? '';
+$setupRequired = $effectiveHash === '';
 $action = (string) ($_REQUEST['action'] ?? '');
 
 if ($action !== '') {
@@ -296,13 +326,46 @@ if ($action !== '') {
         require_csrf();
     }
 
-    if ($action !== 'login' && $action !== 'logout') {
+    if ($action !== 'login' && $action !== 'logout' && $action !== 'setup_auth') {
         require_auth();
     }
 
-    if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($action === 'setup_auth' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!$setupRequired) {
+            json_response(['ok' => false, 'error' => 'already_configured'], 409);
+        }
+
         $password = (string) ($_POST['password'] ?? '');
-        if (APP_PASSWORD_HASH !== '__REPLACE_WITH_PASSWORD_HASH__' && password_verify($password, APP_PASSWORD_HASH)) {
+        $passwordConfirm = (string) ($_POST['password_confirm'] ?? '');
+        if ($password === '' || strlen($password) < 8) {
+            json_response(['ok' => false, 'error' => 'password_too_short'], 400);
+        }
+        if ($password !== $passwordConfirm) {
+            json_response(['ok' => false, 'error' => 'password_mismatch'], 400);
+        }
+
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        if (!is_string($hash) || $hash === '') {
+            json_response(['ok' => false, 'error' => 'hash_failed'], 500);
+        }
+        if (!save_password_hash_file($hash)) {
+            json_response(['ok' => false, 'error' => 'save_failed'], 500);
+        }
+
+        session_regenerate_id(true);
+        $_SESSION['authed'] = true;
+        ensure_csrf_token();
+        log_audit('setup_completed');
+        json_response(['ok' => true]);
+    }
+
+    if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($setupRequired) {
+            json_response(['ok' => false, 'error' => 'setup_required'], 400);
+        }
+
+        $password = (string) ($_POST['password'] ?? '');
+        if (password_verify($password, $effectiveHash)) {
             session_regenerate_id(true);
             $_SESSION['authed'] = true;
             ensure_csrf_token();
@@ -498,7 +561,6 @@ if ($action !== '') {
 }
 
 $csrfToken = ensure_csrf_token();
-$hashPlaceholder = APP_PASSWORD_HASH === '__REPLACE_WITH_PASSWORD_HASH__';
 $initialDirs = is_authed() ? scan_dirs() : [];
 ?>
 <!doctype html>
@@ -580,13 +642,26 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     <div class="card">
         <h1>VibePushr</h1>
         <div class="small">ROOT_DIR: <?= h(ROOT_DIR) ?></div>
-        <?php if ($hashPlaceholder): ?>
-        <div class="small warn">`APP_PASSWORD_HASH` がプレースホルダーです。実運用前に差し替えてください。</div>
+        <?php if ($setupRequired): ?>
+        <div class="small warn">初回セットアップで管理パスワードを設定してください。</div>
         <?php endif; ?>
     </div>
 
     <?php if (!is_authed()): ?>
     <div class="card">
+        <?php if ($setupRequired): ?>
+        <h2>初回セットアップ</h2>
+        <div class="small">管理パスワードを設定してください（8文字以上）</div>
+        <form id="setupForm" method="post">
+            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <div class="row">
+                <input type="password" name="password" placeholder="new password" required minlength="8">
+                <input type="password" name="password_confirm" placeholder="confirm password" required minlength="8">
+                <button class="primary" type="submit">Setup</button>
+            </div>
+            <div id="setupError" class="small error"></div>
+        </form>
+        <?php else: ?>
         <h2>ログイン</h2>
         <form id="loginForm" method="post">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
@@ -596,6 +671,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             </div>
             <div id="loginError" class="small error"></div>
         </form>
+        <?php endif; ?>
     </div>
     <?php else: ?>
     <div class="card">
@@ -681,8 +757,27 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     }
 
     if (!isAuthed) {
+        const setupForm = document.getElementById('setupForm');
+        const setupError = document.getElementById('setupError');
+        if (setupForm) {
+            setupForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (setupError) setupError.textContent = '';
+                try {
+                    await api('setup_auth', { method: 'POST', body: new FormData(setupForm) });
+                    location.reload();
+                } catch (error) {
+                    if (setupError) setupError.textContent = `セットアップ失敗: ${error.message}`;
+                }
+            });
+            return;
+        }
+
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
+        if (!loginForm || !loginError) {
+            return;
+        }
 
         loginForm.addEventListener('submit', async (event) => {
             event.preventDefault();

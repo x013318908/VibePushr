@@ -25,6 +25,10 @@
 - `just audit`
 - `just check`
 
+## CI
+
+- GitHub Actions (`.github/workflows/ci.yml`) で `main` への push / PR 時に lint と PHPUnit を実行します。
+
 ## Development Notes
 
 - 編集対象は基本 `public_html/vp.php`
@@ -32,8 +36,8 @@
 
 ## Auth Note
 
-- 配布時は `APP_PASSWORD_HASH` をプレースホルダーにしておき、利用者が本番前に差し替える運用です。
-- 将来は初回起動時セットアップでパスワード設定できるようにする計画です。
+- 初回起動時セットアップで管理パスワードを設定します。
+- 設定されたハッシュは `public_html/.vp_auth.php` に保存され、以後はその値で認証します。
 
 ## License
 

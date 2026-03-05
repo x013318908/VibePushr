@@ -6,8 +6,8 @@ Thumbs.db
 public_html/.vp_jobs/
 public_html/.vp_unit_tmp/
 public_html/vp.log
+public_html/.vp_auth.php
 
 # Dev dependencies / cache
 dev/vendor/
 dev/.phpunit.cache/
-
