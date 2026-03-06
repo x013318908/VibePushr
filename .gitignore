@@ -3,10 +3,9 @@
 Thumbs.db
 
 # Runtime artifacts
-public_html/.vp_jobs/
-public_html/.vp_unit_tmp/
-public_html/vp.log
-public_html/.vp_auth.php
+# Keep public_html single-file: only vp.php is tracked.
+public_html/*
+!public_html/vp.php
 
 # Dev dependencies / cache
 dev/vendor/
