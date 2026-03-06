@@ -193,15 +193,47 @@ function resolve_safe_path(string $relpath, bool $ensure_parent = false): ?strin
     return $candidate;
 }
 
-function write_atomic(string $targetPath, string $data, ?int $mtime = null): bool
+function write_atomic(string $targetPath, string $data, ?int $mtime = null): string
 {
-    $ok = @file_put_contents($targetPath, $data, LOCK_EX) !== false;
+    $fp = @fopen($targetPath, 'c+b');
+    if ($fp === false) {
+        return 'write_failed';
+    }
 
-    if ($ok && $mtime !== null && $mtime > 0) {
+    if (!@flock($fp, LOCK_EX | LOCK_NB)) {
+        @fclose($fp);
+        return 'locked_busy';
+    }
+
+    $len = strlen($data);
+    $offset = 0;
+    $ok = @rewind($fp);
+
+    while ($ok && $offset < $len) {
+        $chunk = @fwrite($fp, substr($data, $offset));
+        if (!is_int($chunk) || $chunk <= 0) {
+            $ok = false;
+            break;
+        }
+        $offset += $chunk;
+    }
+
+    if ($ok) {
+        $ok = ($offset === $len) && @ftruncate($fp, $len) && @fflush($fp);
+    }
+
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+
+    if (!$ok) {
+        return 'write_failed';
+    }
+
+    if ($mtime !== null && $mtime > 0) {
         @touch($targetPath, $mtime);
     }
 
-    return $ok;
+    return 'ok';
 }
 
 function append_job_log(string $jobId, array $entry): void
@@ -442,9 +474,16 @@ if ($action !== '') {
             json_response(['ok' => false, 'error' => 'unsafe_path'], 400);
         }
 
+        $mtime = isset($_REQUEST['mtime']) ? (int) $_REQUEST['mtime'] : null;
+        $size = isset($_REQUEST['size']) ? (int) $_REQUEST['size'] : null;
+        $dryRun = (string) ($_REQUEST['dry_run'] ?? '0') === '1';
+        $forceOverwrite = (string) ($_REQUEST['force'] ?? '0') === '1';
         $raw = file_get_contents('php://input');
         if ($raw === false) {
             $raw = '';
+        }
+        if ($raw === '' && $size !== null && $size > 0) {
+            json_response(['ok' => false, 'error' => 'empty_body'], 400);
         }
 
         $encoding = strtolower((string) ($_SERVER['HTTP_X_VIBE_ENCODING'] ?? ($_REQUEST['encoding'] ?? 'identity')));
@@ -456,11 +495,6 @@ if ($action !== '') {
             }
             $content = $decoded;
         }
-
-        $mtime = isset($_REQUEST['mtime']) ? (int) $_REQUEST['mtime'] : null;
-        $size = isset($_REQUEST['size']) ? (int) $_REQUEST['size'] : null;
-        $dryRun = (string) ($_REQUEST['dry_run'] ?? '0') === '1';
-        $forceOverwrite = (string) ($_REQUEST['force'] ?? '0') === '1';
 
         $result = 'ok';
         $message = 'stored';
@@ -477,10 +511,10 @@ if ($action !== '') {
         if ($dryRun && $result === 'ok') {
             $message = 'dry_run_no_write';
         } elseif ($result === 'ok') {
-            $saved = write_atomic($target, $content, $mtime);
-            if (!$saved) {
+            $writeStatus = write_atomic($target, $content, $mtime);
+            if ($writeStatus !== 'ok') {
                 $result = 'fail';
-                $message = 'write_failed';
+                $message = $writeStatus;
             }
         }
 
@@ -513,7 +547,7 @@ if ($action !== '') {
 
         json_response([
             'ok' => $result !== 'fail',
-            'result' => $result,
+            'status' => $result,
             'message' => $message,
         ], $result === 'fail' ? 500 : 200);
     }
@@ -707,7 +741,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <button id="testSync" type="button">テスト実行(書き込みなし)</button>
             <button id="retryFailed" type="button" disabled>失敗のみ再送</button>
         </div>
-        <div class="small">同時送信数: 3 / 最大リトライ: 3 / 同期開始はskip判定あり / テスト実行は書き込みなし</div>
+        <div class="small">同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし</div>
         <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
         <div class="small" id="progressText">待機中</div>
         <div id="log"></div>
@@ -806,7 +840,8 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     const logEl = document.getElementById('log');
     const logoutForm = document.getElementById('logoutForm');
 
-    let failedFiles = [];
+    let failedRelpaths = [];
+    let hasClientReadErrorSinceSelection = false;
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>\"']/g, (ch) => ({
@@ -834,6 +869,19 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         progressText.textContent = `完了 ${done}/${total} | 失敗 ${fail} | 処理中: ${currentPath || '-'}`;
     }
 
+    async function refreshSelectionIfNeeded() {
+        return true;
+    }
+
+    function currentFileMap() {
+        const map = new Map();
+        for (const file of Array.from(folderInput.files || [])) {
+            const relpath = file.webkitRelativePath || file.name;
+            map.set(relpath, file);
+        }
+        return map;
+    }
+
     function extOf(path) {
         const idx = path.lastIndexOf('.');
         return idx >= 0 ? path.slice(idx + 1).toLowerCase() : '';
@@ -859,10 +907,25 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         return { encoding: 'identity', bytes: source };
     }
 
-    async function sendOne(jobId, file, relpath, options = {}, attempt = 1) {
+    function isClientReadError(error) {
+        const message = String(error && error.message ? error.message : error || '');
+        return message.startsWith('file_read_failed:');
+    }
+
+    function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function sendOne(jobId, file, relpath, options = {}) {
         const dryRun = options.dryRun === true;
         const force = options.force === true;
-        const packed = await gzipIfUseful(file, relpath);
+        let packed;
+        try {
+            packed = await gzipIfUseful(file, relpath);
+        } catch (error) {
+            const reason = error && error.message ? error.message : String(error || 'unknown');
+            throw new Error(`file_read_failed:${reason}`);
+        }
         const query = new URLSearchParams({
             job_id: jobId,
             relpath,
@@ -872,20 +935,15 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             force: force ? '1' : '0'
         }).toString();
 
-        try {
-            return await api('sync_put', {
-                method: 'POST',
-                query,
-                headers: { 'X-Vibe-Encoding': packed.encoding },
-                body: packed.bytes
-            });
-        } catch (error) {
-            if (attempt < 3) {
-                appendLog(`retry ${attempt} -> ${attempt + 1}: ${relpath}`);
-                return sendOne(jobId, file, relpath, options, attempt + 1);
-            }
-            throw error;
-        }
+        return await api('sync_put', {
+            method: 'POST',
+            query,
+            headers: {
+                'X-Vibe-Encoding': packed.encoding,
+                'Content-Type': 'application/octet-stream'
+            },
+            body: packed.bytes
+        });
     }
 
     async function runSync(files, options = {}) {
@@ -893,6 +951,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         const force = options.force === true;
         const trackFailed = options.trackFailed !== false;
         const modeLabel = dryRun ? 'dry-run' : 'sync';
+        const previousRetryDisabled = retryFailedBtn.disabled;
+        const wasClientReadErrorLocked = hasClientReadErrorSinceSelection;
+        let unresolvedClientReadError = false;
 
         if (!files.length) {
             appendLog('ファイルが選択されていません', true);
@@ -901,62 +962,99 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
         startSyncBtn.disabled = true;
         testSyncBtn.disabled = true;
-        retryFailedBtn.disabled = true;
+        if (!dryRun) {
+            retryFailedBtn.disabled = true;
+        }
         logEl.classList.remove('error');
 
         if (trackFailed) {
-            failedFiles = [];
+            failedRelpaths = [];
         }
         setProgress(0, files.length, '', 0);
 
-        const fd = new FormData();
-        fd.set('total_files', String(files.length));
-        const init = await api('sync_init', { method: 'POST', body: fd });
-        const jobId = init.job_id;
-        appendLog(`${modeLabel} started: ${jobId}`);
+        try {
+            const fd = new FormData();
+            fd.set('total_files', String(files.length));
+            const init = await api('sync_init', { method: 'POST', body: fd });
+            const jobId = init.job_id;
+            appendLog(`${modeLabel} started: ${jobId}`);
 
-        const concurrency = 3;
-        let cursor = 0;
-        let done = 0;
-        let fail = 0;
+            const concurrency = 3;
+            let cursor = 0;
+            let done = 0;
+            let fail = 0;
 
-        async function worker() {
-            while (cursor < files.length) {
-                const index = cursor++;
-                const file = files[index];
-                const relpath = file.webkitRelativePath || file.name;
+            async function worker() {
+                while (cursor < files.length) {
+                    const index = cursor++;
+                    const file = files[index];
+                    const relpath = file.webkitRelativePath || file.name;
 
-                setProgress(done, files.length, relpath, fail);
-
-                try {
-                    const result = await sendOne(jobId, file, relpath, { dryRun, force });
-                    appendLog(`${result.result}: ${relpath}`);
-                } catch (error) {
-                    fail++;
-                    if (trackFailed) {
-                        failedFiles.push(file);
-                    }
-                    appendLog(`fail: ${relpath} (${error.message})`, true);
-                } finally {
-                    done++;
                     setProgress(done, files.length, relpath, fail);
+
+                    try {
+                        let activeFile = file;
+                        let syncResult;
+                        try {
+                            syncResult = await sendOne(jobId, activeFile, relpath, { dryRun, force });
+                        } catch (firstError) {
+                            if (!isClientReadError(firstError)) {
+                                throw firstError;
+                            }
+
+                            // A short retry helps recover from transient OS/file locks.
+                            await sleep(50);
+                            const latest = currentFileMap().get(relpath);
+                            if (latest) {
+                                activeFile = latest;
+                            }
+                            syncResult = await sendOne(jobId, activeFile, relpath, { dryRun, force });
+                        }
+                        appendLog(`${syncResult.status}: ${relpath}`);
+                    } catch (error) {
+                        if (isClientReadError(error)) {
+                            unresolvedClientReadError = true;
+                        }
+                        fail++;
+                        if (trackFailed && !failedRelpaths.includes(relpath)) {
+                            failedRelpaths.push(relpath);
+                        }
+                        appendLog(`fail: ${relpath} (${error.message})`, true);
+                    } finally {
+                        done++;
+                        setProgress(done, files.length, relpath, fail);
+                    }
                 }
             }
+
+            await Promise.all(Array.from({ length: Math.min(concurrency, files.length) }, worker));
+
+            const finishFd = new FormData();
+            finishFd.set('job_id', jobId);
+            const finished = await api('sync_finish', { method: 'POST', body: finishFd });
+            const s = finished.summary;
+            const displayedFail = Math.max(Number(s.fail || 0), fail);
+
+            appendLog(`${modeLabel} finished: ok=${s.ok}, skip=${s.skip}, fail=${displayedFail}`);
+            setProgress(s.done, s.total, s.current_path || '', displayedFail);
+        } finally {
+            hasClientReadErrorSinceSelection = unresolvedClientReadError;
+            if (hasClientReadErrorSinceSelection) {
+                if (!wasClientReadErrorLocked) {
+                    appendLog('アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。', true);
+                }
+                startSyncBtn.disabled = false;
+                retryFailedBtn.disabled = failedRelpaths.length === 0;
+            } else {
+                startSyncBtn.disabled = false;
+                if (dryRun) {
+                    retryFailedBtn.disabled = previousRetryDisabled;
+                } else {
+                    retryFailedBtn.disabled = failedRelpaths.length === 0;
+                }
+            }
+            testSyncBtn.disabled = false;
         }
-
-        await Promise.all(Array.from({ length: Math.min(concurrency, files.length) }, worker));
-
-        const finishFd = new FormData();
-        finishFd.set('job_id', jobId);
-        const finished = await api('sync_finish', { method: 'POST', body: finishFd });
-        const s = finished.summary;
-
-        appendLog(`${modeLabel} finished: ok=${s.ok}, skip=${s.skip}, fail=${s.fail}`);
-        setProgress(s.done, s.total, s.current_path || '', s.fail);
-
-        retryFailedBtn.disabled = dryRun || failedFiles.length === 0;
-        startSyncBtn.disabled = false;
-        testSyncBtn.disabled = false;
     }
 
     async function loadDirs() {
@@ -981,19 +1079,65 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         loadDirs();
     });
 
+    folderInput.addEventListener('change', () => {
+        hasClientReadErrorSinceSelection = false;
+        startSyncBtn.disabled = false;
+        retryFailedBtn.disabled = failedRelpaths.length === 0;
+    });
+
     startSyncBtn.addEventListener('click', async () => {
-        await runSync(Array.from(folderInput.files || []), { dryRun: false, force: false, trackFailed: true });
+        try {
+            if (!(await refreshSelectionIfNeeded())) {
+                return;
+            }
+            await runSync(Array.from(folderInput.files || []), { dryRun: false, force: false, trackFailed: true });
+        } catch (error) {
+            appendLog(`sync error: ${error.message}`, true);
+        }
     });
 
     testSyncBtn.addEventListener('click', async () => {
-        await runSync(Array.from(folderInput.files || []), { dryRun: true, force: false, trackFailed: false });
+        try {
+            if (!(await refreshSelectionIfNeeded())) {
+                return;
+            }
+            await runSync(Array.from(folderInput.files || []), { dryRun: true, force: false, trackFailed: false });
+        } catch (error) {
+            appendLog(`dry-run error: ${error.message}`, true);
+        }
     });
 
     retryFailedBtn.addEventListener('click', async () => {
-        if (failedFiles.length === 0) return;
-        const retry = failedFiles.slice();
-        failedFiles = [];
-        await runSync(retry, { dryRun: false, force: false, trackFailed: true });
+        if (failedRelpaths.length === 0) return;
+
+        if (!(await refreshSelectionIfNeeded())) {
+            return;
+        }
+
+        const byPath = currentFileMap();
+        const retry = [];
+        const missing = [];
+
+        for (const relpath of failedRelpaths) {
+            const file = byPath.get(relpath);
+            if (file) retry.push(file);
+            else missing.push(relpath);
+        }
+        failedRelpaths = [];
+
+        for (const relpath of missing) {
+            appendLog(`skip: ${relpath} (現在の選択に見つからないため再送不可)`, true);
+        }
+        if (retry.length === 0) {
+            retryFailedBtn.disabled = true;
+            return;
+        }
+
+        try {
+            await runSync(retry, { dryRun: false, force: false, trackFailed: true });
+        } catch (error) {
+            appendLog(`retry error: ${error.message}`, true);
+        }
     });
 
     logoutForm.addEventListener('submit', async (event) => {

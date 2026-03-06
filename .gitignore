@@ -11,3 +11,6 @@ public_html/.vp_auth.php
 # Dev dependencies / cache
 dev/vendor/
 dev/.phpunit.cache/
+dev/node_modules/
+dev/playwright-report/
+dev/test-results/

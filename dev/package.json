@@ -1,0 +1,21 @@
+{
+  "name": "dev",
+  "version": "1.0.0",
+  "description": "Dev tools for VibePushr",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "pw:install": "playwright install chromium"
+  },
+  "keywords": [
+    "playwright",
+    "vibepushr"
+  ],
+  "author": "",
+  "license": "CC0-1.0",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
