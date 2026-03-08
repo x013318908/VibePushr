@@ -94,6 +94,16 @@ final class VpFunctionsTest extends TestCase
         $this->assertFalse(should_block_for_idle($last, $now, $days));
     }
 
+    public function testShouldBlockForFailedAttemptsAtThreshold(): void
+    {
+        $this->assertTrue(should_block_for_failed_attempts(5, 5));
+    }
+
+    public function testShouldBlockForFailedAttemptsBelowThreshold(): void
+    {
+        $this->assertFalse(should_block_for_failed_attempts(4, 5));
+    }
+
     public function testClientReadFailureTracksFailedRelpath(): void
     {
         // arrayBuffer() failure can happen client-side (e.g. locked/unreadable file).
