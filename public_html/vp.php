@@ -8,6 +8,8 @@ const ROOT_DIR = __DIR__;
 const JOB_DIR_NAME = '.vp_jobs';
 const LOG_FILE_NAME = 'vp.log';
 const AUTH_FILE_NAME = '.vp_auth.php';
+const LOGIN_GUARD_FILE_NAME = '.vp_login_guard.json';
+const LOGIN_MAX_IDLE_DAYS = 30;
 const MAX_ERROR_KEEP = 10;
 
 function now_iso(): string
@@ -81,6 +83,87 @@ function log_audit(string $message): void
 function auth_file_path(): string
 {
     return ROOT_DIR . DIRECTORY_SEPARATOR . AUTH_FILE_NAME;
+}
+
+function login_guard_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . LOGIN_GUARD_FILE_NAME;
+}
+
+function should_block_for_idle(?int $lastLoginAtTs, int $nowTs, int $limitDays): bool
+{
+    if ($lastLoginAtTs === null || $limitDays <= 0) {
+        return false;
+    }
+
+    return ($nowTs - $lastLoginAtTs) >= ($limitDays * 86400);
+}
+
+/**
+ * @return array{allowed:bool,error?:string,blocked_now?:bool}
+ */
+function evaluate_login_guard_after_password_verify(): array
+{
+    $path = login_guard_path();
+    $fp = @fopen($path, 'c+b');
+    if ($fp === false) {
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+
+    if (!@flock($fp, LOCK_EX)) {
+        @fclose($fp);
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+
+    $raw = stream_get_contents($fp);
+    $state = [];
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $state = $decoded;
+        }
+    }
+
+    $nowIso = now_iso();
+    $nowTs = time();
+    $lastLoginTs = null;
+    if (isset($state['last_login_at']) && is_string($state['last_login_at'])) {
+        $parsed = strtotime($state['last_login_at']);
+        if (is_int($parsed) && $parsed > 0) {
+            $lastLoginTs = $parsed;
+        }
+    }
+
+    $isBlocked = !empty($state['blocked']);
+    $blockedNow = false;
+    if (!$isBlocked && should_block_for_idle($lastLoginTs, $nowTs, LOGIN_MAX_IDLE_DAYS)) {
+        $isBlocked = true;
+        $blockedNow = true;
+        $state['blocked_at'] = $nowIso;
+        $state['block_reason'] = 'idle_exceeded';
+    }
+
+    $state['blocked'] = $isBlocked;
+    $state['last_login_at'] = $nowIso;
+
+    $encoded = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $writeOk = is_string($encoded) && @rewind($fp) && @ftruncate($fp, 0) && @fwrite($fp, $encoded) !== false && @fflush($fp);
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+
+    if (!$writeOk) {
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+
+    if ($isBlocked) {
+        return [
+            'allowed' => false,
+            'error' => $blockedNow ? 'login_blocked_idle' : 'login_blocked',
+            'blocked_now' => $blockedNow,
+        ];
+    }
+
+    return ['allowed' => true];
 }
 
 function load_password_hash_from_file(): ?string
@@ -398,6 +481,18 @@ if ($action !== '') {
 
         $password = (string) ($_POST['password'] ?? '');
         if (password_verify($password, $effectiveHash)) {
+            $guard = evaluate_login_guard_after_password_verify();
+            if (empty($guard['allowed'])) {
+                if (($guard['error'] ?? '') === 'login_blocked_idle') {
+                    log_audit('login_blocked_idle');
+                } elseif (($guard['error'] ?? '') === 'login_blocked') {
+                    log_audit('login_blocked_persisted');
+                } else {
+                    log_audit('login_guard_unavailable');
+                }
+                json_response(['ok' => false, 'error' => (string) ($guard['error'] ?? 'login_blocked')], 403);
+            }
+
             session_regenerate_id(true);
             $_SESSION['authed'] = true;
             ensure_csrf_token();

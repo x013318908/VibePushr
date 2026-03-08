@@ -73,6 +73,27 @@ final class VpFunctionsTest extends TestCase
         $this->assertSame("second\n", (string) file_get_contents($target));
     }
 
+    public function testShouldBlockForIdleReturnsFalseWhenNoLastLogin(): void
+    {
+        $this->assertFalse(should_block_for_idle(null, 1700000000, 30));
+    }
+
+    public function testShouldBlockForIdleReturnsTrueWhenThresholdReached(): void
+    {
+        $now = 1700000000;
+        $days = 30;
+        $last = $now - ($days * 86400);
+        $this->assertTrue(should_block_for_idle($last, $now, $days));
+    }
+
+    public function testShouldBlockForIdleReturnsFalseWhenBelowThreshold(): void
+    {
+        $now = 1700000000;
+        $days = 30;
+        $last = $now - ($days * 86400) + 1;
+        $this->assertFalse(should_block_for_idle($last, $now, $days));
+    }
+
     public function testClientReadFailureTracksFailedRelpath(): void
     {
         // arrayBuffer() failure can happen client-side (e.g. locked/unreadable file).
