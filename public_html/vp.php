@@ -2,6 +2,41 @@
 
 declare(strict_types=1);
 
+function request_is_https(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+
+    if (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) {
+        return true;
+    }
+
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        $proto = strtolower(trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_PROTO'])[0]));
+        if ($proto === 'https') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+ini_set('session.use_strict_mode', '1');
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_samesite', 'Lax');
+if (request_is_https()) {
+    ini_set('session.cookie_secure', '1');
+}
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => request_is_https(),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
 session_start();
 
 const ROOT_DIR = __DIR__;
