@@ -918,6 +918,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     padding: 8px 6px;
     font-size: 0.94rem;
 }
+#dirTable th.num, #dirTable td.num {
+    text-align: right;
+}
 #progressBar { width: 100%; height: 14px; }
 #log {
     margin-top: 8px;
@@ -932,6 +935,16 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px;
 }
+.log-line { margin: 0 0 2px; }
+.log-error { color: var(--danger); }
+.log-sync-start {
+    font-weight: 700;
+    color: #0b6b57;
+}
+.log-dryrun-start {
+    font-weight: 700;
+    color: #0b4f8c;
+}
 .error { color: var(--danger); }
 .warn { color: #9a6700; }
 </style>
@@ -939,8 +952,13 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 <body>
 <div class="container">
     <div class="card">
-        <h1>VibePushr</h1>
-        <div class="small">ROOT_DIR: <?= h(ROOT_DIR) ?></div>
+        <div class="small">現在の場所: <?= h(rtrim(str_replace('\\', '/', ROOT_DIR), '/') . '/') ?></div>
+        <?php if (is_authed()): ?>
+        <form id="logoutForm" method="post" class="row" style="margin-top:8px;">
+            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <button type="submit">Logout</button>
+        </form>
+        <?php endif; ?>
         <?php if ($setupRequired): ?>
         <div class="small warn">初回セットアップで管理パスワードを設定してください。</div>
         <?php endif; ?>
@@ -980,7 +998,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         </div>
         <table id="dirTable">
             <thead>
-                <tr><th>Path</th><th>Files</th><th>Bytes</th></tr>
+                <tr><th>Path</th><th class="num">Files</th><th class="num">Bytes</th></tr>
             </thead>
             <tbody id="dirBody">
             <?php if (empty($initialDirs)): ?>
@@ -994,9 +1012,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                     $dirHref = ($scriptBaseUrl !== '' ? $scriptBaseUrl : '') . '/' . $encodedPath . '/';
                 ?>
                 <tr>
-                    <td><a href="<?= h($dirHref) ?>" target="_blank" rel="noopener noreferrer"><?= h($path) ?></a></td>
-                    <td><?= (int) ($row['file_count'] ?? 0) ?></td>
-                    <td><?= (int) ($row['total_bytes'] ?? 0) ?></td>
+                    <td><a href="<?= h($dirHref) ?>" target="_blank" rel="noopener noreferrer"><?= h(rtrim($path, '/') . '/') ?></a></td>
+                    <td class="num"><?= (int) ($row['file_count'] ?? 0) ?></td>
+                    <td class="num"><?= (int) ($row['total_bytes'] ?? 0) ?></td>
                 </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
@@ -1018,12 +1036,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         <div id="log"></div>
     </div>
 
-    <div class="card">
-        <form id="logoutForm" method="post" class="row">
-            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-            <button type="submit">Logout</button>
-        </form>
-    </div>
     <?php endif; ?>
 </div>
 
@@ -1134,14 +1146,20 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         return `${scriptBaseUrl}/${encoded}/`;
     }
 
-    function appendLog(line, isError = false) {
+    function appendLog(line, isError = false, emphasisClass = '') {
         const ts = new Date().toLocaleTimeString();
         const text = `[${ts}] ${line}`;
-        logEl.textContent += (logEl.textContent ? '\n' : '') + text;
-        logEl.scrollTop = logEl.scrollHeight;
+        const row = document.createElement('div');
+        row.className = 'log-line';
         if (isError) {
-            logEl.classList.add('error');
+            row.classList.add('log-error');
         }
+        if (emphasisClass) {
+            row.classList.add(emphasisClass);
+        }
+        row.textContent = text;
+        logEl.appendChild(row);
+        logEl.scrollTop = logEl.scrollHeight;
     }
 
     function setProgress(done, total, currentPath, fail) {
@@ -1258,7 +1276,11 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             fd.set('total_files', String(files.length));
             const init = await api('sync_init', { method: 'POST', body: fd });
             const jobId = init.job_id;
-            appendLog(`${modeLabel} started: ${jobId}`);
+            if (dryRun) {
+                appendLog(`🧪 dry-run started: ${jobId}`, false, 'log-dryrun-start');
+            } else {
+                appendLog(`▶ sync started: ${jobId}`, false, 'log-sync-start');
+            }
 
             const concurrency = 3;
             let cursor = 0;
@@ -1349,9 +1371,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             }
 
             dirBody.innerHTML = res.dirs.map((row) => {
-                const safePath = escapeHtml(row.path);
+                const safePath = escapeHtml(`${String(row.path || '').replace(/\/+$/, '')}/`);
                 const safeHref = escapeHtml(buildFolderHref(row.path));
-                return `<tr><td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safePath}</a></td><td>${row.file_count}</td><td>${row.total_bytes}</td></tr>`;
+                return `<tr><td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safePath}</a></td><td class="num">${row.file_count}</td><td class="num">${row.total_bytes}</td></tr>`;
             }).join('');
         } catch (error) {
             dirBody.innerHTML = `<tr><td colspan="3">読み込み失敗: ${escapeHtml(error.message)}</td></tr>`;
