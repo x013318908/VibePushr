@@ -992,6 +992,20 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     </div>
     <?php else: ?>
     <div class="card">
+        <h2>フォルダー同期</h2>
+        <div class="row">
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+            <button class="primary" id="startSync" type="button">同期開始</button>
+            <button id="testSync" type="button">テスト実行(書き込みなし)</button>
+            <button id="retryFailed" type="button" disabled>失敗のみ再送</button>
+        </div>
+        <div class="small">同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし</div>
+        <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
+        <div class="small" id="progressText">待機中</div>
+        <div id="log"></div>
+    </div>
+
+    <div class="card">
         <div class="row" style="justify-content:space-between;">
             <h2>フォルダー一覧</h2>
             <button id="refreshDirs" type="button">再読み込み</button>
@@ -1020,20 +1034,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <?php endif; ?>
             </tbody>
         </table>
-    </div>
-
-    <div class="card">
-        <h2>フォルダー同期</h2>
-        <div class="row">
-            <input type="file" id="folderInput" webkitdirectory directory multiple>
-            <button class="primary" id="startSync" type="button">同期開始</button>
-            <button id="testSync" type="button">テスト実行(書き込みなし)</button>
-            <button id="retryFailed" type="button" disabled>失敗のみ再送</button>
-        </div>
-        <div class="small">同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし</div>
-        <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
-        <div class="small" id="progressText">待機中</div>
-        <div id="log"></div>
     </div>
 
     <?php endif; ?>
