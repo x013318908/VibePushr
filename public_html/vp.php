@@ -859,6 +859,8 @@ if ($action !== '') {
 
 $csrfToken = ensure_csrf_token();
 $initialDirs = is_authed() ? scan_dirs() : [];
+$requestPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $requestPath : '/')), '/');
 ?>
 <!doctype html>
 <html lang="ja">
@@ -989,7 +991,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                     $path = (string) ($row['path'] ?? '');
                     $segments = array_filter(explode('/', $path), static fn($segment) => $segment !== '');
                     $encodedPath = implode('/', array_map('rawurlencode', $segments));
-                    $dirHref = '/' . $encodedPath . '/';
+                    $dirHref = ($scriptBaseUrl !== '' ? $scriptBaseUrl : '') . '/' . $encodedPath . '/';
                 ?>
                 <tr>
                     <td><a href="<?= h($dirHref) ?>" target="_blank" rel="noopener noreferrer"><?= h($path) ?></a></td>
@@ -1029,6 +1031,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 (() => {
     const csrfToken = <?= json_encode($csrfToken, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const isAuthed = <?= is_authed() ? 'true' : 'false' ?>;
+    const scriptBaseUrl = <?= json_encode($scriptBaseUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     async function api(action, options = {}) {
         const method = options.method || 'GET';
@@ -1128,7 +1131,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             .filter((segment) => segment !== '')
             .map((segment) => encodeURIComponent(segment))
             .join('/');
-        return `/${encoded}/`;
+        return `${scriptBaseUrl}/${encoded}/`;
     }
 
     function appendLog(line, isError = false) {
