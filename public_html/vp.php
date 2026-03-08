@@ -377,7 +377,18 @@ function resolve_safe_path(string $relpath, bool $ensure_parent = false): ?strin
     }
 
     $parentReal = realpath($parent);
-    if ($parentReal === false || !is_within_root($parentReal)) {
+    if ($parentReal === false) {
+        // In dry-run, parent may not exist yet; keep it safe by checking
+        // the normalized candidate path stays under ROOT_DIR.
+        if (!$ensure_parent) {
+            if (!is_within_root($full)) {
+                return null;
+            }
+            return $full;
+        }
+        return null;
+    }
+    if (!is_within_root($parentReal)) {
         return null;
     }
 
