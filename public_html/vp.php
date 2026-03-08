@@ -223,7 +223,7 @@ function evaluate_login_guard_after_password_verify(): array
 }
 
 /**
- * @return array{allowed:bool,error:string,blocked_now?:bool}
+ * @return array{allowed:bool,error:string,blocked_now?:bool,remaining_attempts?:int}
  */
 function evaluate_login_guard_after_password_failure(): array
 {
@@ -251,6 +251,7 @@ function evaluate_login_guard_after_password_failure(): array
     $blockReason = (string) ($state['block_reason'] ?? '');
     $blockedNow = false;
     $error = 'invalid_password';
+    $remainingAttempts = null;
 
     if ($isBlocked) {
         $error = ($blockReason === 'too_many_failures') ? 'login_blocked_failures' : 'login_blocked';
@@ -258,6 +259,7 @@ function evaluate_login_guard_after_password_failure(): array
         $failedCount = max(0, (int) ($state['failed_count'] ?? 0)) + 1;
         $state['failed_count'] = $failedCount;
         $state['last_failed_at'] = $nowIso;
+        $remainingAttempts = max(0, LOGIN_MAX_FAILED_ATTEMPTS - $failedCount);
 
         if (should_block_for_failed_attempts($failedCount, LOGIN_MAX_FAILED_ATTEMPTS)) {
             $state['blocked'] = true;
@@ -282,6 +284,7 @@ function evaluate_login_guard_after_password_failure(): array
         'allowed' => false,
         'error' => $error,
         'blocked_now' => $blockedNow,
+        'remaining_attempts' => $remainingAttempts,
     ];
 }
 
@@ -640,6 +643,10 @@ if ($action !== '') {
         }
 
         log_audit('login_failed');
+        $remainingAttempts = isset($guardFailure['remaining_attempts']) ? (int) $guardFailure['remaining_attempts'] : null;
+        if ($remainingAttempts !== null && $remainingAttempts >= 0) {
+            json_response(['ok' => false, 'error' => "invalid_password (remaining: {$remainingAttempts})"], 401);
+        }
         json_response(['ok' => false, 'error' => 'invalid_password'], 401);
     }
 
