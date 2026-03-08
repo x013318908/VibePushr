@@ -1,5 +1,7 @@
 # VibePushr
 
+[English README](README.en.md)
+
 フォルダーをそのままサーバーにデプロイするためのツールです。
 
 サーバーには `vp.php` を1ファイル置くだけ。
