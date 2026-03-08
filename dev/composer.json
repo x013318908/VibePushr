@@ -1,4 +1,7 @@
 {
+    "name": "x013318908/vibepushr-dev",
+    "description": "Development tooling and tests for VibePushr",
+    "license": "CC0-1.0",
     "require": {
         "php": "^8.2"
     },
