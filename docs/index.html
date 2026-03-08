@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VibePushr - Download</title>
+  <meta name="description" content="VibePushr is a single-file PHP app. Download vp.php and upload it to your server.">
+  <style>
+    :root {
+      --bg: #f6f8f9;
+      --paper: #ffffff;
+      --text: #132028;
+      --muted: #5a6b73;
+      --line: #d8e1e5;
+      --accent: #0a6b56;
+      --accent-strong: #075447;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 300px at 20% -10%, #dff4ef 0%, transparent 60%),
+        radial-gradient(1200px 400px at 100% 0%, #e6f3ff 0%, transparent 55%),
+        var(--bg);
+    }
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 28px 16px 56px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 28px rgba(12, 24, 31, 0.06);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+    p, li {
+      line-height: 1.6;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border-radius: 9px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: #fff;
+      font-weight: 600;
+    }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn.primary:hover {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+    }
+    code {
+      background: #f1f5f7;
+      border: 1px solid #e1e9ed;
+      border-radius: 6px;
+      padding: 1px 6px;
+    }
+    ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>VibePushr</h1>
+      <p class="muted">Single-file PHP app for folder sync. Upload one file: <code>vp.php</code>.</p>
+      <div class="buttons">
+        <a class="btn primary" href="https://github.com/x013318908/VibePushr/releases/latest" target="_blank" rel="noopener noreferrer">Download (Latest Release)</a>
+        <a class="btn" href="https://raw.githubusercontent.com/x013318908/VibePushr/main/public_html/vp.php" target="_blank" rel="noopener noreferrer">Raw vp.php</a>
+        <a class="btn" href="https://github.com/x013318908/VibePushr" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Quick Setup</h2>
+      <ol>
+        <li>Download <code>vp.php</code>.</li>
+        <li>Upload <code>vp.php</code> to your server (for example under <code>public_html</code>).</li>
+        <li>Open <code>vp.php</code> in your browser.</li>
+        <li>Set your admin password on first launch.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Update</h2>
+      <ol>
+        <li>Download the latest <code>vp.php</code>.</li>
+        <li>Replace your existing <code>vp.php</code> file.</li>
+        <li>Open the page and verify operation.</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
