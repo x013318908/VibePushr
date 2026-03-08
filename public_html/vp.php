@@ -721,15 +721,15 @@ if ($action !== '') {
             json_response(['ok' => false, 'error' => 'invalid_relpath'], 400);
         }
 
-        $target = resolve_safe_path($relpath, true);
-        if ($target === null) {
-            json_response(['ok' => false, 'error' => 'unsafe_path'], 400);
-        }
-
         $mtime = isset($_REQUEST['mtime']) ? (int) $_REQUEST['mtime'] : null;
         $size = isset($_REQUEST['size']) ? (int) $_REQUEST['size'] : null;
         $dryRun = (string) ($_REQUEST['dry_run'] ?? '0') === '1';
         $forceOverwrite = (string) ($_REQUEST['force'] ?? '0') === '1';
+        $target = resolve_safe_path($relpath, !$dryRun);
+        if ($target === null) {
+            json_response(['ok' => false, 'error' => 'unsafe_path'], 400);
+        }
+
         $raw = file_get_contents('php://input');
         if ($raw === false) {
             $raw = '';
