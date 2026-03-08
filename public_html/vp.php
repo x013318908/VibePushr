@@ -45,6 +45,7 @@ const LOG_FILE_NAME = 'vp.log';
 const AUTH_FILE_NAME = '.vp_auth.php';
 const LOGIN_GUARD_FILE_NAME = '.vp_login_guard.json';
 const LOGIN_MAX_IDLE_DAYS = 30;
+const LOGIN_MAX_FAILED_ATTEMPTS = 100;
 const MAX_ERROR_KEEP = 10;
 
 function now_iso(): string
@@ -134,6 +135,15 @@ function should_block_for_idle(?int $lastLoginAtTs, int $nowTs, int $limitDays):
     return ($nowTs - $lastLoginAtTs) >= ($limitDays * 86400);
 }
 
+function should_block_for_failed_attempts(int $failedCount, int $maxAttempts): bool
+{
+    if ($maxAttempts <= 0) {
+        return false;
+    }
+
+    return $failedCount >= $maxAttempts;
+}
+
 /**
  * @return array{allowed:bool,error?:string,blocked_now?:bool}
  */
@@ -170,16 +180,21 @@ function evaluate_login_guard_after_password_verify(): array
     }
 
     $isBlocked = !empty($state['blocked']);
+    $blockReason = (string) ($state['block_reason'] ?? '');
     $blockedNow = false;
     if (!$isBlocked && should_block_for_idle($lastLoginTs, $nowTs, LOGIN_MAX_IDLE_DAYS)) {
         $isBlocked = true;
         $blockedNow = true;
         $state['blocked_at'] = $nowIso;
         $state['block_reason'] = 'idle_exceeded';
+        $blockReason = 'idle_exceeded';
     }
 
     $state['blocked'] = $isBlocked;
     $state['last_login_at'] = $nowIso;
+    if (!$isBlocked) {
+        $state['failed_count'] = 0;
+    }
 
     $encoded = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $writeOk = is_string($encoded) && @rewind($fp) && @ftruncate($fp, 0) && @fwrite($fp, $encoded) !== false && @fflush($fp);
@@ -191,14 +206,83 @@ function evaluate_login_guard_after_password_verify(): array
     }
 
     if ($isBlocked) {
+        $error = 'login_blocked';
+        if ($blockedNow && $blockReason === 'idle_exceeded') {
+            $error = 'login_blocked_idle';
+        } elseif ($blockReason === 'too_many_failures') {
+            $error = 'login_blocked_failures';
+        }
         return [
             'allowed' => false,
-            'error' => $blockedNow ? 'login_blocked_idle' : 'login_blocked',
+            'error' => $error,
             'blocked_now' => $blockedNow,
         ];
     }
 
     return ['allowed' => true];
+}
+
+/**
+ * @return array{allowed:bool,error:string,blocked_now?:bool}
+ */
+function evaluate_login_guard_after_password_failure(): array
+{
+    $path = login_guard_path();
+    $fp = @fopen($path, 'c+b');
+    if ($fp === false) {
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+    if (!@flock($fp, LOCK_EX)) {
+        @fclose($fp);
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+
+    $raw = stream_get_contents($fp);
+    $state = [];
+    if (is_string($raw) && $raw !== '') {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $state = $decoded;
+        }
+    }
+
+    $nowIso = now_iso();
+    $isBlocked = !empty($state['blocked']);
+    $blockReason = (string) ($state['block_reason'] ?? '');
+    $blockedNow = false;
+    $error = 'invalid_password';
+
+    if ($isBlocked) {
+        $error = ($blockReason === 'too_many_failures') ? 'login_blocked_failures' : 'login_blocked';
+    } else {
+        $failedCount = max(0, (int) ($state['failed_count'] ?? 0)) + 1;
+        $state['failed_count'] = $failedCount;
+        $state['last_failed_at'] = $nowIso;
+
+        if (should_block_for_failed_attempts($failedCount, LOGIN_MAX_FAILED_ATTEMPTS)) {
+            $state['blocked'] = true;
+            $state['blocked_at'] = $nowIso;
+            $state['block_reason'] = 'too_many_failures';
+            $isBlocked = true;
+            $blockedNow = true;
+            $error = 'login_blocked_failures';
+        }
+    }
+
+    $encoded = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $writeOk = is_string($encoded) && @rewind($fp) && @ftruncate($fp, 0) && @fwrite($fp, $encoded) !== false && @fflush($fp);
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+
+    if (!$writeOk) {
+        return ['allowed' => false, 'error' => 'guard_unavailable'];
+    }
+
+    return [
+        'allowed' => false,
+        'error' => $error,
+        'blocked_now' => $blockedNow,
+    ];
 }
 
 function load_password_hash_from_file(): ?string
@@ -520,6 +604,8 @@ if ($action !== '') {
             if (empty($guard['allowed'])) {
                 if (($guard['error'] ?? '') === 'login_blocked_idle') {
                     log_audit('login_blocked_idle');
+                } elseif (($guard['error'] ?? '') === 'login_blocked_failures') {
+                    log_audit('login_blocked_failures');
                 } elseif (($guard['error'] ?? '') === 'login_blocked') {
                     log_audit('login_blocked_persisted');
                 } else {
@@ -532,6 +618,25 @@ if ($action !== '') {
             $_SESSION['authed'] = true;
             ensure_csrf_token();
             json_response(['ok' => true]);
+        }
+
+        $guardFailure = evaluate_login_guard_after_password_failure();
+        $error = (string) ($guardFailure['error'] ?? 'invalid_password');
+        if ($error === 'login_blocked_failures') {
+            if (!empty($guardFailure['blocked_now'])) {
+                log_audit('login_blocked_failures_now');
+            } else {
+                log_audit('login_blocked_failures_persisted');
+            }
+            json_response(['ok' => false, 'error' => $error], 403);
+        }
+        if ($error === 'login_blocked') {
+            log_audit('login_blocked_persisted');
+            json_response(['ok' => false, 'error' => $error], 403);
+        }
+        if ($error === 'guard_unavailable') {
+            log_audit('login_guard_unavailable');
+            json_response(['ok' => false, 'error' => $error], 503);
         }
 
         log_audit('login_failed');
