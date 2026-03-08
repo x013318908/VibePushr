@@ -614,7 +614,17 @@ if ($action !== '') {
                 } else {
                     log_audit('login_guard_unavailable');
                 }
-                json_response(['ok' => false, 'error' => (string) ($guard['error'] ?? 'login_blocked')], 403);
+                $guardError = (string) ($guard['error'] ?? 'login_blocked');
+                if ($guardError === 'login_blocked_idle') {
+                    json_response(['ok' => false, 'error' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                }
+                if ($guardError === 'login_blocked_failures') {
+                    json_response(['ok' => false, 'error' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                }
+                if ($guardError === 'login_blocked') {
+                    json_response(['ok' => false, 'error' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                }
+                json_response(['ok' => false, 'error' => $guardError], 403);
             }
 
             session_regenerate_id(true);
@@ -631,11 +641,11 @@ if ($action !== '') {
             } else {
                 log_audit('login_blocked_failures_persisted');
             }
-            json_response(['ok' => false, 'error' => $error], 403);
+            json_response(['ok' => false, 'error' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
         }
         if ($error === 'login_blocked') {
             log_audit('login_blocked_persisted');
-            json_response(['ok' => false, 'error' => $error], 403);
+            json_response(['ok' => false, 'error' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
         }
         if ($error === 'guard_unavailable') {
             log_audit('login_guard_unavailable');
@@ -964,8 +974,14 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                 <tr><td colspan="3">フォルダーなし</td></tr>
             <?php else: ?>
                 <?php foreach ($initialDirs as $row): ?>
+                <?php
+                    $path = (string) ($row['path'] ?? '');
+                    $segments = array_filter(explode('/', $path), static fn($segment) => $segment !== '');
+                    $encodedPath = implode('/', array_map('rawurlencode', $segments));
+                    $dirHref = '/' . $encodedPath . '/';
+                ?>
                 <tr>
-                    <td><?= h((string) ($row['path'] ?? '')) ?></td>
+                    <td><a href="<?= h($dirHref) ?>" target="_blank" rel="noopener noreferrer"><?= h($path) ?></a></td>
                     <td><?= (int) ($row['file_count'] ?? 0) ?></td>
                     <td><?= (int) ($row['total_bytes'] ?? 0) ?></td>
                 </tr>
@@ -1093,6 +1109,15 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             '"': '&quot;',
             "'": '&#39;'
         }[ch]));
+    }
+
+    function buildFolderHref(path) {
+        const encoded = String(path || '')
+            .split('/')
+            .filter((segment) => segment !== '')
+            .map((segment) => encodeURIComponent(segment))
+            .join('/');
+        return `/${encoded}/`;
     }
 
     function appendLog(line, isError = false) {
@@ -1310,7 +1335,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             }
 
             dirBody.innerHTML = res.dirs.map((row) => {
-                return `<tr><td>${escapeHtml(row.path)}</td><td>${row.file_count}</td><td>${row.total_bytes}</td></tr>`;
+                const safePath = escapeHtml(row.path);
+                const safeHref = escapeHtml(buildFolderHref(row.path));
+                return `<tr><td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safePath}</a></td><td>${row.file_count}</td><td>${row.total_bytes}</td></tr>`;
             }).join('');
         } catch (error) {
             dirBody.innerHTML = `<tr><td colspan="3">読み込み失敗: ${escapeHtml(error.message)}</td></tr>`;
