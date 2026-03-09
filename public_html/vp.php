@@ -870,20 +870,22 @@ $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $req
 <title>VibePushr</title>
 <style>
 :root {
-    --bg: #f4f7f8;
+    --bg: #f6f8fa;
     --card: #ffffff;
-    --line: #dce3e5;
-    --text: #1b2730;
-    --muted: #5a6c76;
-    --accent: #0b6b57;
-    --danger: #b42318;
+    --line: #d0d7de;
+    --line-strong: #8c959f;
+    --text: #24292f;
+    --muted: #57606a;
+    --accent: #2da44e;
+    --accent-hover: #2c974b;
+    --danger: #cf222e;
 }
 * { box-sizing: border-box; }
 body {
     margin: 0;
-    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
     color: var(--text);
-    background: linear-gradient(150deg, #ecf6ff 0%, var(--bg) 38%, #f7fdf7 100%);
+    background: var(--bg);
 }
 .container {
     max-width: 980px;
@@ -893,23 +895,24 @@ body {
 .card {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 14px;
     margin-bottom: 12px;
-    box-shadow: 0 6px 24px rgba(9, 26, 36, 0.05);
+    box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
 }
 h1 { margin: 0 0 6px; font-size: 1.6rem; }
 h2 { margin: 0 0 10px; font-size: 1.1rem; }
 .small { font-size: 0.9rem; color: var(--muted); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 input, button {
-    border: 1px solid var(--line);
+    border: 1px solid var(--line-strong);
     border-radius: 8px;
     font-size: 14px;
     padding: 8px 10px;
 }
-button { background: #fff; cursor: pointer; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button { background: #f6f8fa; cursor: pointer; }
+button.primary { background: var(--accent); border-color: rgba(27, 31, 36, 0.15); color: #fff; }
+button.primary:hover { background: var(--accent-hover); }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
 #dirTable { width: 100%; border-collapse: collapse; }
 #dirTable th, #dirTable td {
