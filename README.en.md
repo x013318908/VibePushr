@@ -46,6 +46,13 @@ That’s it.
 
 ---
 
+## Recommended Security Operation
+
+- On deployment, rename the `vp` portion of `vp.php` to a non-guessable custom name (for example, `a8k3push.php`).
+- Renaming the file should not change behavior: login, sync, and dry-run continue to work.
+
+---
+
 ## Directory Layout
 
 - `public_html/vp.php` — deployable single-file application

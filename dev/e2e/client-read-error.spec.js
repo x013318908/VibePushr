@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { getEntrypointPath } = require('./helpers/entrypoint');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -15,7 +16,7 @@ async function isVisible(locator) {
 }
 
 async function ensureAuthed(page) {
-  await page.goto('/vp.php');
+  await page.goto(getEntrypointPath());
 
   const syncHeading = page.getByRole('heading', { level: 2, name: 'フォルダー同期' });
   if (await isVisible(syncHeading)) return { ok: true };
