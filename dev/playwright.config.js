@@ -1,5 +1,11 @@
 const { defineConfig, devices } = require('@playwright/test');
 
+const entrypoint = (process.env.VP_ENTRYPOINT || 'vp.php').replace(/^\/+/, '') || 'vp.php';
+const baseUrl = `http://127.0.0.1:8787/${entrypoint}`;
+const prepareEntrypoint = entrypoint === 'vp.php'
+  ? ':'
+  : `cp -f ../public_html/vp.php ../public_html/${entrypoint}`;
+
 module.exports = defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -12,8 +18,8 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'php -S 127.0.0.1:8787 -t ../public_html',
-    url: 'http://127.0.0.1:8787/vp.php',
+    command: `${prepareEntrypoint} && php -S 127.0.0.1:8787 -t ../public_html`,
+    url: baseUrl,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },
