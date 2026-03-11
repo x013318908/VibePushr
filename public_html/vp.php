@@ -115,7 +115,7 @@ function t(string $key): string
             'start_sync' => 'Start Sync',
             'test_sync' => 'Test Run (No Write)',
             'retry_failed' => 'Retry Failed Only',
-            'sync_meta' => 'Concurrency: 3 / Max retry: none / Start Sync uses skip checks / Test Run does not write',
+            'sync_meta' => 'Concurrency: 10 / Max retry: none / Start Sync uses skip checks / Test Run does not write',
             'progress_idle' => 'Idle',
             'progress_fmt' => 'Done %d/%d | Fail %d | Processing: %s',
             'dirs_title' => 'Folder List',
@@ -142,7 +142,7 @@ function t(string $key): string
             'start_sync' => '同期開始',
             'test_sync' => 'テスト実行(書き込みなし)',
             'retry_failed' => '失敗のみ再送',
-            'sync_meta' => '同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし',
+            'sync_meta' => '同時送信数: 10 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし',
             'progress_idle' => '待機中',
             'progress_fmt' => '完了 %d/%d | 失敗 %d | 処理中: %s',
             'dirs_title' => 'フォルダー一覧',
@@ -1420,7 +1420,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                 appendLog(`▶ sync started: ${jobId}`, false, 'log-sync-start');
             }
 
-            const concurrency = 3;
+            const concurrency = 10;
             let cursor = 0;
             let done = 0;
             let fail = 0;
