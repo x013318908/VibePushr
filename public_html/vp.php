@@ -48,6 +48,125 @@ const LOGIN_MAX_IDLE_DAYS = 30;
 const LOGIN_MAX_FAILED_ATTEMPTS = 100;
 const MAX_ERROR_KEEP = 10;
 
+function detect_language(): string
+{
+    $explicit = strtolower((string) ($_GET['lang'] ?? ''));
+    if ($explicit === 'ja' || $explicit === 'en') {
+        return $explicit;
+    }
+
+    $accept = (string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
+    if ($accept !== '') {
+        $candidates = [];
+        foreach (explode(',', $accept) as $index => $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $langPart = $part;
+            $q = 1.0;
+            if (strpos($part, ';') !== false) {
+                [$langPart, $params] = array_map('trim', explode(';', $part, 2));
+                if (preg_match('/q=([0-9.]+)/i', $params, $m)) {
+                    $q = (float) $m[1];
+                }
+            }
+            $primary = strtolower(explode('-', $langPart)[0]);
+            if ($primary === 'ja' || $primary === 'en') {
+                $candidates[] = ['lang' => $primary, 'q' => $q, 'i' => $index];
+            }
+        }
+        if (!empty($candidates)) {
+            usort($candidates, static function (array $a, array $b): int {
+                if ($a['q'] === $b['q']) {
+                    return $a['i'] <=> $b['i'];
+                }
+                return ($a['q'] > $b['q']) ? -1 : 1;
+            });
+            return (string) $candidates[0]['lang'];
+        }
+    }
+
+    return 'en';
+}
+
+function app_lang(): string
+{
+    static $lang = null;
+    if ($lang === null) {
+        $lang = detect_language();
+    }
+    return $lang;
+}
+
+function t(string $key): string
+{
+    static $messages = [
+        'en' => [
+            'current_location' => 'Current location',
+            'logout' => 'Logout',
+            'setup_warning' => 'Please set an admin password in initial setup.',
+            'setup_title' => 'Initial Setup',
+            'setup_desc' => 'Set an admin password (8 characters or more).',
+            'setup_failed' => 'Setup failed',
+            'login_title' => 'Login',
+            'login_failed' => 'Login failed',
+            'sync_title' => 'Folder Sync',
+            'start_sync' => 'Start Sync',
+            'test_sync' => 'Test Run (No Write)',
+            'retry_failed' => 'Retry Failed Only',
+            'sync_meta' => 'Concurrency: 3 / Max retry: none / Start Sync uses skip checks / Test Run does not write',
+            'progress_idle' => 'Idle',
+            'progress_fmt' => 'Done %d/%d | Fail %d | Processing: %s',
+            'dirs_title' => 'Folder List',
+            'dirs_reload' => 'Reload',
+            'dirs_empty' => 'No folders',
+            'files_not_selected' => 'No files selected',
+            'upload_blocked_hint' => 'Some files could not be uploaded. If failures continue, try re-selecting the folder.',
+            'load_failed' => 'Load failed',
+            'retry_unavailable' => 'cannot retry because it is not found in the current selection',
+            'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
+            'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_login_guard.json via FTP.',
+            'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_login_guard.json via FTP.',
+        ],
+        'ja' => [
+            'current_location' => '現在の場所',
+            'logout' => 'Logout',
+            'setup_warning' => '初回セットアップで管理パスワードを設定してください。',
+            'setup_title' => '初回セットアップ',
+            'setup_desc' => '管理パスワードを設定してください（8文字以上）',
+            'setup_failed' => 'セットアップ失敗',
+            'login_title' => 'ログイン',
+            'login_failed' => 'ログイン失敗',
+            'sync_title' => 'フォルダー同期',
+            'start_sync' => '同期開始',
+            'test_sync' => 'テスト実行(書き込みなし)',
+            'retry_failed' => '失敗のみ再送',
+            'sync_meta' => '同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし',
+            'progress_idle' => '待機中',
+            'progress_fmt' => '完了 %d/%d | 失敗 %d | 処理中: %s',
+            'dirs_title' => 'フォルダー一覧',
+            'dirs_reload' => '再読み込み',
+            'dirs_empty' => 'フォルダーなし',
+            'files_not_selected' => 'ファイルが選択されていません',
+            'upload_blocked_hint' => 'アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。',
+            'load_failed' => '読み込み失敗',
+            'retry_unavailable' => '現在の選択に見つからないため再送不可',
+            'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
+            'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
+            'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
+        ],
+    ];
+    $lang = app_lang();
+    if (isset($messages[$lang][$key])) {
+        return $messages[$lang][$key];
+    }
+    if (isset($messages['en'][$key])) {
+        return $messages['en'][$key];
+    }
+    return $key;
+}
+
 function now_iso(): string
 {
     return gmdate('c');
@@ -627,13 +746,13 @@ if ($action !== '') {
                 }
                 $guardError = (string) ($guard['error'] ?? 'login_blocked');
                 if ($guardError === 'login_blocked_idle') {
-                    json_response(['ok' => false, 'error' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                    json_response(['ok' => false, 'error' => t('login_locked_idle')], 403);
                 }
                 if ($guardError === 'login_blocked_failures') {
-                    json_response(['ok' => false, 'error' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                    json_response(['ok' => false, 'error' => t('login_locked_failures')], 403);
                 }
                 if ($guardError === 'login_blocked') {
-                    json_response(['ok' => false, 'error' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+                    json_response(['ok' => false, 'error' => t('login_locked')], 403);
                 }
                 json_response(['ok' => false, 'error' => $guardError], 403);
             }
@@ -652,11 +771,11 @@ if ($action !== '') {
             } else {
                 log_audit('login_blocked_failures_persisted');
             }
-            json_response(['ok' => false, 'error' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+            json_response(['ok' => false, 'error' => t('login_locked_failures')], 403);
         }
         if ($error === 'login_blocked') {
             log_audit('login_blocked_persisted');
-            json_response(['ok' => false, 'error' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。'], 403);
+            json_response(['ok' => false, 'error' => t('login_locked')], 403);
         }
         if ($error === 'guard_unavailable') {
             log_audit('login_guard_unavailable');
@@ -859,11 +978,22 @@ if ($action !== '') {
 
 $csrfToken = ensure_csrf_token();
 $initialDirs = is_authed() ? scan_dirs() : [];
+$lang = app_lang();
+$uiText = [
+    'setup_failed' => t('setup_failed'),
+    'login_failed' => t('login_failed'),
+    'progress_fmt' => t('progress_fmt'),
+    'files_not_selected' => t('files_not_selected'),
+    'upload_blocked_hint' => t('upload_blocked_hint'),
+    'dirs_empty' => t('dirs_empty'),
+    'load_failed' => t('load_failed'),
+    'retry_unavailable' => t('retry_unavailable'),
+];
 $requestPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $requestPath : '/')), '/');
 ?>
 <!doctype html>
-<html lang="ja">
+<html lang="<?= h($lang) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -955,23 +1085,23 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 <body>
 <div class="container">
     <div class="card">
-        <div class="small">現在の場所: <?= h(rtrim(str_replace('\\', '/', ROOT_DIR), '/') . '/') ?></div>
+        <div class="small"><?= h(t('current_location')) ?>: <?= h(rtrim(str_replace('\\', '/', ROOT_DIR), '/') . '/') ?></div>
         <?php if (is_authed()): ?>
         <form id="logoutForm" method="post" class="row" style="margin-top:8px;">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-            <button type="submit">Logout</button>
+            <button type="submit"><?= h(t('logout')) ?></button>
         </form>
         <?php endif; ?>
         <?php if ($setupRequired): ?>
-        <div class="small warn">初回セットアップで管理パスワードを設定してください。</div>
+        <div class="small warn"><?= h(t('setup_warning')) ?></div>
         <?php endif; ?>
     </div>
 
     <?php if (!is_authed()): ?>
     <div class="card">
         <?php if ($setupRequired): ?>
-        <h2>初回セットアップ</h2>
-        <div class="small">管理パスワードを設定してください（8文字以上）</div>
+        <h2><?= h(t('setup_title')) ?></h2>
+        <div class="small"><?= h(t('setup_desc')) ?></div>
         <form id="setupForm" method="post">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <div class="row">
@@ -982,7 +1112,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <div id="setupError" class="small error"></div>
         </form>
         <?php else: ?>
-        <h2>ログイン</h2>
+        <h2><?= h(t('login_title')) ?></h2>
         <form id="loginForm" method="post">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <div class="row">
@@ -995,23 +1125,23 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     </div>
     <?php else: ?>
     <div class="card">
-        <h2>フォルダー同期</h2>
+        <h2><?= h(t('sync_title')) ?></h2>
         <div class="row">
             <input type="file" id="folderInput" webkitdirectory directory multiple>
-            <button class="primary" id="startSync" type="button">同期開始</button>
-            <button id="testSync" type="button">テスト実行(書き込みなし)</button>
-            <button id="retryFailed" type="button" disabled>失敗のみ再送</button>
+            <button class="primary" id="startSync" type="button"><?= h(t('start_sync')) ?></button>
+            <button id="testSync" type="button"><?= h(t('test_sync')) ?></button>
+            <button id="retryFailed" type="button" disabled><?= h(t('retry_failed')) ?></button>
         </div>
-        <div class="small">同時送信数: 3 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし</div>
+        <div class="small"><?= h(t('sync_meta')) ?></div>
         <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
-        <div class="small" id="progressText">待機中</div>
+        <div class="small" id="progressText"><?= h(t('progress_idle')) ?></div>
         <div id="log"></div>
     </div>
 
     <div class="card">
         <div class="row" style="justify-content:space-between;">
-            <h2>フォルダー一覧</h2>
-            <button id="refreshDirs" type="button">再読み込み</button>
+            <h2><?= h(t('dirs_title')) ?></h2>
+            <button id="refreshDirs" type="button"><?= h(t('dirs_reload')) ?></button>
         </div>
         <table id="dirTable">
             <thead>
@@ -1019,7 +1149,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             </thead>
             <tbody id="dirBody">
             <?php if (empty($initialDirs)): ?>
-                <tr><td colspan="3">フォルダーなし</td></tr>
+                <tr><td colspan="3"><?= h(t('dirs_empty')) ?></td></tr>
             <?php else: ?>
                 <?php foreach ($initialDirs as $row): ?>
                 <?php
@@ -1047,6 +1177,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     const csrfToken = <?= json_encode($csrfToken, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const isAuthed = <?= is_authed() ? 'true' : 'false' ?>;
     const scriptBaseUrl = <?= json_encode($scriptBaseUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const i18n = <?= json_encode($uiText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     async function api(action, options = {}) {
         const method = options.method || 'GET';
@@ -1088,7 +1219,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                     await api('setup_auth', { method: 'POST', body: new FormData(setupForm) });
                     location.reload();
                 } catch (error) {
-                    if (setupError) setupError.textContent = `セットアップ失敗: ${error.message}`;
+                    if (setupError) setupError.textContent = `${i18n.setup_failed}: ${error.message}`;
                 }
             });
             return;
@@ -1107,7 +1238,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                 await api('login', { method: 'POST', body: new FormData(loginForm) });
                 location.reload();
             } catch (error) {
-                loginError.textContent = `ログイン失敗: ${error.message}`;
+                loginError.textContent = `${i18n.login_failed}: ${error.message}`;
             }
         });
 
@@ -1168,7 +1299,11 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     function setProgress(done, total, currentPath, fail) {
         progressBar.max = Math.max(total, 1);
         progressBar.value = done;
-        progressText.textContent = `完了 ${done}/${total} | 失敗 ${fail} | 処理中: ${currentPath || '-'}`;
+        progressText.textContent = i18n.progress_fmt
+            .replace('%d', String(done))
+            .replace('%d', String(total))
+            .replace('%d', String(fail))
+            .replace('%s', currentPath || '-');
     }
 
     async function refreshSelectionIfNeeded() {
@@ -1258,7 +1393,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         let unresolvedClientReadError = false;
 
         if (!files.length) {
-            appendLog('ファイルが選択されていません', true);
+            appendLog(i18n.files_not_selected, true);
             return;
         }
 
@@ -1347,7 +1482,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             hasClientReadErrorSinceSelection = unresolvedClientReadError;
             if (hasClientReadErrorSinceSelection) {
                 if (!wasClientReadErrorLocked) {
-                    appendLog('アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。', true);
+                    appendLog(i18n.upload_blocked_hint, true);
                 }
                 startSyncBtn.disabled = false;
                 retryFailedBtn.disabled = failedRelpaths.length === 0;
@@ -1369,7 +1504,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         try {
             const res = await api('list_dirs');
             if (!res.dirs || res.dirs.length === 0) {
-                dirBody.innerHTML = '<tr><td colspan="3">フォルダーなし</td></tr>';
+                dirBody.innerHTML = `<tr><td colspan="3">${escapeHtml(i18n.dirs_empty)}</td></tr>`;
                 return;
             }
 
@@ -1379,7 +1514,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                 return `<tr><td><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safePath}</a></td><td class="num">${row.file_count}</td><td class="num">${row.total_bytes}</td></tr>`;
             }).join('');
         } catch (error) {
-            dirBody.innerHTML = `<tr><td colspan="3">読み込み失敗: ${escapeHtml(error.message)}</td></tr>`;
+            dirBody.innerHTML = `<tr><td colspan="3">${escapeHtml(i18n.load_failed)}: ${escapeHtml(error.message)}</td></tr>`;
         }
     }
 
@@ -1434,7 +1569,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         failedRelpaths = [];
 
         for (const relpath of missing) {
-            appendLog(`skip: ${relpath} (現在の選択に見つからないため再送不可)`, true);
+            appendLog(`skip: ${relpath} (${i18n.retry_unavailable})`, true);
         }
         if (retry.length === 0) {
             retryFailedBtn.disabled = true;

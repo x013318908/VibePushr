@@ -118,7 +118,7 @@ final class VpFunctionsTest extends TestCase
     {
         $this->assertStringContainsString('const byPath = currentFileMap();', $this->vpSource);
         $this->assertStringContainsString('const file = byPath.get(relpath);', $this->vpSource);
-        $this->assertStringContainsString('skip: ${relpath} (現在の選択に見つからないため再送不可)', $this->vpSource);
+        $this->assertStringContainsString('appendLog(`skip: ${relpath} (${i18n.retry_unavailable})`, true);', $this->vpSource);
     }
 
     public function testDryRunPreservesRetryButtonDisabledState(): void
@@ -141,7 +141,7 @@ final class VpFunctionsTest extends TestCase
         $this->assertStringContainsString('let hasClientReadErrorSinceSelection = false;', $this->vpSource);
         $this->assertStringContainsString('async function refreshSelectionIfNeeded()', $this->vpSource);
         $this->assertStringContainsString('return true;', $this->vpSource);
-        $this->assertStringContainsString("appendLog('アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。', true);", $this->vpSource);
+        $this->assertStringContainsString('appendLog(i18n.upload_blocked_hint, true);', $this->vpSource);
         $this->assertStringContainsString('startSyncBtn.disabled = false;', $this->vpSource);
         $this->assertStringContainsString('folderInput.addEventListener(\'change\', () => {', $this->vpSource);
     }
