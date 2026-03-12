@@ -128,6 +128,7 @@ function t(string $key): string
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_login_guard.json via FTP.',
+            'unicode_filename_mismatch' => 'Filename mismatch after write (possible server encoding mismatch). On some servers (for example XREA), non-ASCII filenames may fail via web access.',
         ],
         'ja' => [
             'current_location' => '現在の場所',
@@ -155,6 +156,7 @@ function t(string $key): string
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
+            'unicode_filename_mismatch' => '保存後のファイル名が一致しません（サーバー側の文字コード不一致の可能性）。一部環境（例: XREA）では日本語ファイル名がWeb経由で失敗することがあります。',
         ],
     ];
     $lang = app_lang();
@@ -1339,6 +1341,14 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         logEl.scrollTop = logEl.scrollHeight;
     }
 
+    function localizeErrorMessage(message) {
+        const key = String(message || '');
+        if (Object.prototype.hasOwnProperty.call(i18n, key)) {
+            return i18n[key];
+        }
+        return key;
+    }
+
     function setProgress(done, total, currentPath, fail) {
         progressBar.max = Math.max(total, 1);
         progressBar.value = done;
@@ -1503,7 +1513,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                         if (trackFailed && !failedRelpaths.includes(relpath)) {
                             failedRelpaths.push(relpath);
                         }
-                        appendLog(`fail: ${relpath} (${error.message})`, true);
+                        appendLog(`fail: ${relpath} (${localizeErrorMessage(error.message)})`, true);
                     } finally {
                         done++;
                         setProgress(done, files.length, relpath, fail);
@@ -1578,7 +1588,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             }
             await runSync(Array.from(folderInput.files || []), { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
-            appendLog(`sync error: ${error.message}`, true);
+            appendLog(`sync error: ${localizeErrorMessage(error.message)}`, true);
         }
     });
 
@@ -1589,7 +1599,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             }
             await runSync(Array.from(folderInput.files || []), { dryRun: true, force: false, trackFailed: false });
         } catch (error) {
-            appendLog(`dry-run error: ${error.message}`, true);
+            appendLog(`dry-run error: ${localizeErrorMessage(error.message)}`, true);
         }
     });
 
@@ -1622,7 +1632,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         try {
             await runSync(retry, { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
-            appendLog(`retry error: ${error.message}`, true);
+            appendLog(`retry error: ${localizeErrorMessage(error.message)}`, true);
         }
     });
 
