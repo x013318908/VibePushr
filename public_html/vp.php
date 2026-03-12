@@ -128,7 +128,7 @@ function t(string $key): string
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_login_guard.json via FTP.',
-            'unicode_filename_mismatch' => 'Filename mismatch after write (possible server encoding mismatch). On some servers (for example XREA), non-ASCII filenames may fail via web access.',
+            'unicode_filename_mismatch' => 'On some servers, non-ASCII filenames may cause issues.',
         ],
         'ja' => [
             'current_location' => '現在の場所',
@@ -156,7 +156,7 @@ function t(string $key): string
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
-            'unicode_filename_mismatch' => '保存後のファイル名が一致しません（サーバー側の文字コード不一致の可能性）。一部環境（例: XREA）では日本語ファイル名がWeb経由で失敗することがあります。',
+            'unicode_filename_mismatch' => '一部のサーバーでは日本語ファイル名が問題になることがあります。',
         ],
     ];
     $lang = app_lang();
@@ -1033,6 +1033,7 @@ $uiText = [
     'dirs_empty' => t('dirs_empty'),
     'load_failed' => t('load_failed'),
     'retry_unavailable' => t('retry_unavailable'),
+    'unicode_filename_mismatch' => t('unicode_filename_mismatch'),
 ];
 $requestPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $requestPath : '/')), '/');
