@@ -463,6 +463,41 @@ function normalize_relpath(string $relpath): ?string
     return implode('/', $clean);
 }
 
+function to_relpath_from_full(string $fullPath): ?string
+{
+    $root = realpath(ROOT_DIR);
+    if ($root === false) {
+        return null;
+    }
+
+    $rootNorm = rtrim(str_replace('\\', '/', $root), '/');
+    $fullNorm = str_replace('\\', '/', $fullPath);
+    if ($fullNorm === $rootNorm) {
+        return null;
+    }
+    if (strpos($fullNorm, $rootNorm . '/') !== 0) {
+        return null;
+    }
+
+    $rel = substr($fullNorm, strlen($rootNorm) + 1);
+    return normalize_relpath($rel);
+}
+
+function has_unicode_filename_mismatch(string $expectedRelpath, string $actualFullPath): bool
+{
+    $expected = normalize_relpath($expectedRelpath);
+    if ($expected === null) {
+        return true;
+    }
+
+    $actual = to_relpath_from_full($actualFullPath);
+    if ($actual === null) {
+        return true;
+    }
+
+    return $expected !== $actual;
+}
+
 function is_within_root(string $path): bool
 {
     $root = realpath(ROOT_DIR);
@@ -897,6 +932,12 @@ if ($action !== '') {
             if ($writeStatus !== 'ok') {
                 $result = 'fail';
                 $message = $writeStatus;
+            } else {
+                $writtenReal = realpath($target);
+                if (!is_string($writtenReal) || has_unicode_filename_mismatch($relpath, $writtenReal)) {
+                    $result = 'fail';
+                    $message = 'unicode_filename_mismatch';
+                }
             }
         }
 
@@ -920,6 +961,8 @@ if ($action !== '') {
         append_job_log($jobId, [
             'ts' => now_iso(),
             'path' => $relpath,
+            'original_relpath' => $relpath,
+            'resolved_target' => $target,
             'result' => $result,
             'message' => $message,
             'dry_run' => $dryRun,

@@ -42,6 +42,7 @@ final class VpFunctionsTest extends TestCase
     {
         $this->assertSame('mailoutput/a.txt', normalize_relpath('mailoutput/a.txt'));
         $this->assertSame('mailoutput/a.txt', normalize_relpath('mailoutput\\a.txt'));
+        $this->assertSame('docs/日本語ファイル名.txt', normalize_relpath('docs/日本語ファイル名.txt'));
     }
 
     public function testNormalizeRelpathRejectsDangerousPath(): void
@@ -54,6 +55,37 @@ final class VpFunctionsTest extends TestCase
     public function testResolveSafePathRejectsTraversal(): void
     {
         $this->assertNull(resolve_safe_path('../outside.txt', true));
+    }
+
+    public function testUnicodeMismatchDetectionMatchesSamePath(): void
+    {
+        $relFile = $this->tmpDirRel . '/日本語.txt';
+        $target = resolve_safe_path($relFile, true);
+        $this->assertIsString($target);
+        $this->assertNotSame('', $target);
+
+        $created = write_atomic($target, "ok\n", 1700000000);
+        $this->assertSame('ok', $created);
+
+        $real = realpath($target);
+        $this->assertIsString($real);
+        $this->assertFalse(has_unicode_filename_mismatch($relFile, $real));
+    }
+
+    public function testUnicodeMismatchDetectionDetectsDifferentPath(): void
+    {
+        $relFile = $this->tmpDirRel . '/日本語.txt';
+        $otherRel = $this->tmpDirRel . '/nihongo.txt';
+        $otherTarget = resolve_safe_path($otherRel, true);
+        $this->assertIsString($otherTarget);
+        $this->assertNotSame('', $otherTarget);
+
+        $created = write_atomic($otherTarget, "ok\n", 1700000000);
+        $this->assertSame('ok', $created);
+
+        $otherReal = realpath($otherTarget);
+        $this->assertIsString($otherReal);
+        $this->assertTrue(has_unicode_filename_mismatch($relFile, $otherReal));
     }
 
     public function testWriteAtomicCreatesAndOverwritesFile(): void
