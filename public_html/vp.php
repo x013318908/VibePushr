@@ -127,6 +127,7 @@ function t(string $key): string
             'drop_overlay' => 'Drop to select files for sync',
             'selection_status' => 'Selected files: %d',
             'drop_invalid_selection' => 'Drop exactly one folder.',
+            'drop_selected' => 'Selected by drag & drop: %d file(s)',
             'load_failed' => 'Load failed',
             'retry_unavailable' => 'cannot retry because it is not found in the current selection',
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
@@ -159,6 +160,7 @@ function t(string $key): string
             'drop_overlay' => 'ここにドロップして同期対象を選択',
             'selection_status' => '選択中ファイル: %d',
             'drop_invalid_selection' => 'フォルダー1つだけドロップしてください。',
+            'drop_selected' => 'ドラッグ&ドロップで選択: %d ファイル',
             'load_failed' => '読み込み失敗',
             'retry_unavailable' => '現在の選択に見つからないため再送不可',
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
@@ -1040,6 +1042,7 @@ $uiText = [
     'upload_blocked_hint' => t('upload_blocked_hint'),
     'selection_status' => t('selection_status'),
     'drop_invalid_selection' => t('drop_invalid_selection'),
+    'drop_selected' => t('drop_selected'),
     'dirs_empty' => t('dirs_empty'),
     'load_failed' => t('load_failed'),
     'retry_unavailable' => t('retry_unavailable'),
@@ -1735,6 +1738,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             startSyncBtn.disabled = false;
             retryFailedBtn.disabled = failedRelpaths.length === 0;
             updateSelectionStatus();
+            appendLog(i18n.drop_selected.replace('%d', String(files.length)));
         }).catch(() => {
             appendLog(i18n.drop_invalid_selection, true);
         });
