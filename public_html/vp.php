@@ -123,6 +123,9 @@ function t(string $key): string
             'dirs_empty' => 'No folders',
             'files_not_selected' => 'No files selected',
             'upload_blocked_hint' => 'Some files could not be uploaded. If failures continue, try re-selecting the folder.',
+            'drop_anywhere_hint' => 'Drag & drop files/folders anywhere on this page.',
+            'drop_overlay' => 'Drop to select files for sync',
+            'selection_status' => 'Selected files: %d',
             'load_failed' => 'Load failed',
             'retry_unavailable' => 'cannot retry because it is not found in the current selection',
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
@@ -151,6 +154,9 @@ function t(string $key): string
             'dirs_empty' => 'フォルダーなし',
             'files_not_selected' => 'ファイルが選択されていません',
             'upload_blocked_hint' => 'アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。',
+            'drop_anywhere_hint' => 'このページ全体にファイル/フォルダーをドラッグ&ドロップできます。',
+            'drop_overlay' => 'ここにドロップして同期対象を選択',
+            'selection_status' => '選択中ファイル: %d',
             'load_failed' => '読み込み失敗',
             'retry_unavailable' => '現在の選択に見つからないため再送不可',
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
@@ -1126,6 +1132,30 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 .error { color: var(--danger); }
 .warn { color: #9a6700; }
+.drop-hint {
+    margin-top: 8px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 8px 10px;
+}
+.drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 105, 218, 0.16);
+    border: 3px dashed rgba(9, 105, 218, 0.45);
+    color: #0550ae;
+    font-weight: 700;
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+.drop-overlay.active {
+    display: flex;
+}
 </style>
 </head>
 <body>
@@ -1170,6 +1200,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         <?php endif; ?>
     </div>
     <?php else: ?>
+    <div id="dropOverlay" class="drop-overlay"><?= h(t('drop_overlay')) ?></div>
     <div class="card">
         <h2><?= h(t('sync_title')) ?></h2>
         <div class="row">
@@ -1178,6 +1209,8 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <button id="testSync" type="button"><?= h(t('test_sync')) ?></button>
             <button id="retryFailed" type="button" disabled><?= h(t('retry_failed')) ?></button>
         </div>
+        <div class="small drop-hint" id="dropHint"><?= h(t('drop_anywhere_hint')) ?></div>
+        <div class="small" id="selectionStatus"><?= h(str_replace('%d', '0', t('selection_status'))) ?></div>
         <div class="small"><?= h(t('sync_meta')) ?></div>
         <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
         <div class="small" id="progressText"><?= h(t('progress_idle')) ?></div>
@@ -1303,9 +1336,12 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     const progressText = document.getElementById('progressText');
     const logEl = document.getElementById('log');
     const logoutForm = document.getElementById('logoutForm');
+    const dropOverlay = document.getElementById('dropOverlay');
+    const selectionStatus = document.getElementById('selectionStatus');
 
     let failedRelpaths = [];
     let hasClientReadErrorSinceSelection = false;
+    let dragDepth = 0;
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>\"']/g, (ch) => ({
@@ -1362,6 +1398,17 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
     async function refreshSelectionIfNeeded() {
         return true;
+    }
+
+    function selectedFiles() {
+        return Array.from(folderInput.files || []);
+    }
+
+    function updateSelectionStatus() {
+        if (!selectionStatus) {
+            return;
+        }
+        selectionStatus.textContent = i18n.selection_status.replace('%d', String(selectedFiles().length));
     }
 
     function currentFileMap() {
@@ -1580,6 +1627,52 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         hasClientReadErrorSinceSelection = false;
         startSyncBtn.disabled = false;
         retryFailedBtn.disabled = failedRelpaths.length === 0;
+        updateSelectionStatus();
+    });
+
+    function resetDropState() {
+        dragDepth = 0;
+        if (dropOverlay) {
+            dropOverlay.classList.remove('active');
+        }
+    }
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        document.addEventListener(eventName, (event) => {
+            event.preventDefault();
+        });
+    });
+
+    document.addEventListener('dragenter', () => {
+        dragDepth += 1;
+        if (dropOverlay) {
+            dropOverlay.classList.add('active');
+        }
+    });
+
+    document.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0 && dropOverlay) {
+            dropOverlay.classList.remove('active');
+        }
+    });
+
+    document.addEventListener('drop', (event) => {
+        resetDropState();
+        const files = Array.from(event.dataTransfer?.files || []);
+        if (files.length === 0) {
+            return;
+        }
+        const transfer = new DataTransfer();
+        for (const file of files) {
+            transfer.items.add(file);
+        }
+        folderInput.files = transfer.files;
+        hasClientReadErrorSinceSelection = false;
+        startSyncBtn.disabled = false;
+        retryFailedBtn.disabled = failedRelpaths.length === 0;
+        updateSelectionStatus();
+        appendLog(`selected ${files.length} file(s) by drag & drop`);
     });
 
     startSyncBtn.addEventListener('click', async () => {
@@ -1587,7 +1680,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             if (!(await refreshSelectionIfNeeded())) {
                 return;
             }
-            await runSync(Array.from(folderInput.files || []), { dryRun: false, force: false, trackFailed: true });
+            await runSync(selectedFiles(), { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
             appendLog(`sync error: ${localizeErrorMessage(error.message)}`, true);
         }
@@ -1598,7 +1691,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             if (!(await refreshSelectionIfNeeded())) {
                 return;
             }
-            await runSync(Array.from(folderInput.files || []), { dryRun: true, force: false, trackFailed: false });
+            await runSync(selectedFiles(), { dryRun: true, force: false, trackFailed: false });
         } catch (error) {
             appendLog(`dry-run error: ${localizeErrorMessage(error.message)}`, true);
         }
@@ -1647,6 +1740,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     });
 
     loadDirs();
+    updateSelectionStatus();
 })();
 </script>
 </body>
