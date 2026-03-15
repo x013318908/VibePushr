@@ -126,6 +126,7 @@ function t(string $key): string
             'drop_anywhere_hint' => 'Drag & drop files/folders anywhere on this page.',
             'drop_overlay' => 'Drop to select files for sync',
             'selection_status' => 'Selected files: %d',
+            'drop_invalid_selection' => 'Drop exactly one folder.',
             'load_failed' => 'Load failed',
             'retry_unavailable' => 'cannot retry because it is not found in the current selection',
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
@@ -157,6 +158,7 @@ function t(string $key): string
             'drop_anywhere_hint' => 'このページ全体にファイル/フォルダーをドラッグ&ドロップできます。',
             'drop_overlay' => 'ここにドロップして同期対象を選択',
             'selection_status' => '選択中ファイル: %d',
+            'drop_invalid_selection' => 'フォルダー1つだけドロップしてください。',
             'load_failed' => '読み込み失敗',
             'retry_unavailable' => '現在の選択に見つからないため再送不可',
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
@@ -1037,6 +1039,7 @@ $uiText = [
     'files_not_selected' => t('files_not_selected'),
     'upload_blocked_hint' => t('upload_blocked_hint'),
     'selection_status' => t('selection_status'),
+    'drop_invalid_selection' => t('drop_invalid_selection'),
     'dirs_empty' => t('dirs_empty'),
     'load_failed' => t('load_failed'),
     'retry_unavailable' => t('retry_unavailable'),
@@ -1343,6 +1346,8 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     let failedRelpaths = [];
     let hasClientReadErrorSinceSelection = false;
     let dragDepth = 0;
+    let droppedFiles = [];
+    const relpathByFile = new WeakMap();
 
     function escapeHtml(value) {
         return String(value).replace(/[&<>\"']/g, (ch) => ({
@@ -1402,7 +1407,14 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     }
 
     function selectedFiles() {
+        if (droppedFiles.length > 0) {
+            return droppedFiles;
+        }
         return Array.from(folderInput.files || []);
+    }
+
+    function relpathOf(file) {
+        return relpathByFile.get(file) || file.webkitRelativePath || file.name;
     }
 
     function updateSelectionStatus() {
@@ -1414,8 +1426,8 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
     function currentFileMap() {
         const map = new Map();
-        for (const file of Array.from(folderInput.files || [])) {
-            const relpath = file.webkitRelativePath || file.name;
+        for (const file of selectedFiles()) {
+            const relpath = relpathOf(file);
             map.set(relpath, file);
         }
         return map;
@@ -1531,7 +1543,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
                 while (cursor < files.length) {
                     const index = cursor++;
                     const file = files[index];
-                    const relpath = file.webkitRelativePath || file.name;
+                    const relpath = relpathOf(file);
 
                     setProgress(done, files.length, relpath, fail);
 
@@ -1625,11 +1637,54 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     });
 
     folderInput.addEventListener('change', () => {
+        droppedFiles = [];
         hasClientReadErrorSinceSelection = false;
         startSyncBtn.disabled = false;
         retryFailedBtn.disabled = failedRelpaths.length === 0;
         updateSelectionStatus();
     });
+
+    function readEntries(reader) {
+        return new Promise((resolve, reject) => {
+            reader.readEntries(resolve, reject);
+        });
+    }
+
+    function readFileFromEntry(entry) {
+        return new Promise((resolve, reject) => {
+            entry.file(resolve, reject);
+        });
+    }
+
+    async function collectEntryFiles(entry, parentRelpath = '') {
+        if (entry.isFile) {
+            const file = await readFileFromEntry(entry);
+            const relpath = `${parentRelpath}${entry.name}`;
+            relpathByFile.set(file, relpath);
+            return [file];
+        }
+
+        if (!entry.isDirectory) {
+            return [];
+        }
+
+        const nextParent = `${parentRelpath}${entry.name}/`;
+        const reader = entry.createReader();
+        const files = [];
+
+        for (;;) {
+            const entries = await readEntries(reader);
+            if (!entries.length) {
+                break;
+            }
+            for (const child of entries) {
+                const childFiles = await collectEntryFiles(child, nextParent);
+                files.push(...childFiles);
+            }
+        }
+
+        return files;
+    }
 
     function resetDropState() {
         dragDepth = 0;
@@ -1660,20 +1715,29 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 
     document.addEventListener('drop', (event) => {
         resetDropState();
-        const files = Array.from(event.dataTransfer?.files || []);
-        if (files.length === 0) {
+        const items = Array.from(event.dataTransfer?.items || []);
+        const entries = items
+            .map((item) => (typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null))
+            .filter((entry) => entry !== null);
+
+        if (entries.length !== 1 || !entries[0].isDirectory) {
+            appendLog(i18n.drop_invalid_selection, true);
             return;
         }
-        const transfer = new DataTransfer();
-        for (const file of files) {
-            transfer.items.add(file);
-        }
-        folderInput.files = transfer.files;
-        hasClientReadErrorSinceSelection = false;
-        startSyncBtn.disabled = false;
-        retryFailedBtn.disabled = failedRelpaths.length === 0;
-        updateSelectionStatus();
-        appendLog(`selected ${files.length} file(s) by drag & drop`);
+
+        collectEntryFiles(entries[0]).then((files) => {
+            droppedFiles = files;
+            try {
+                folderInput.value = '';
+            } catch (_) {
+            }
+            hasClientReadErrorSinceSelection = false;
+            startSyncBtn.disabled = false;
+            retryFailedBtn.disabled = failedRelpaths.length === 0;
+            updateSelectionStatus();
+        }).catch(() => {
+            appendLog(i18n.drop_invalid_selection, true);
+        });
     });
 
     startSyncBtn.addEventListener('click', async () => {
