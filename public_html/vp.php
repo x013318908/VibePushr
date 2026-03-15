@@ -1036,6 +1036,7 @@ $uiText = [
     'progress_fmt' => t('progress_fmt'),
     'files_not_selected' => t('files_not_selected'),
     'upload_blocked_hint' => t('upload_blocked_hint'),
+    'selection_status' => t('selection_status'),
     'dirs_empty' => t('dirs_empty'),
     'load_failed' => t('load_failed'),
     'retry_unavailable' => t('retry_unavailable'),
