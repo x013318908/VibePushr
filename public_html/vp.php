@@ -108,14 +108,15 @@ function t(string $key): string
             'setup_warning' => 'Please set an admin password in initial setup.',
             'setup_title' => 'Initial Setup',
             'setup_desc' => 'Set an admin password (8 characters or more).',
+            'login_button' => 'Login',
             'setup_failed' => 'Setup failed',
             'login_title' => 'Login',
             'login_failed' => 'Login failed',
-            'sync_title' => 'Folder Sync',
-            'start_sync' => 'Start Sync',
-            'test_sync' => 'Test Run (No Write)',
-            'retry_failed' => 'Retry Failed Only',
-            'sync_meta' => 'Concurrency: 10 / Max retry: none / Start Sync uses skip checks / Test Run does not write',
+            'sync_title' => 'Folder Upload',
+            'start_sync' => 'Start Upload',
+            'test_sync' => 'Test Run (No Upload)',
+            'retry_failed' => 'Retry Failed Uploads Only',
+            'sync_meta' => 'Concurrency: 10 / Max retry: none / Start Upload uses skip checks / Test Run does not upload',
             'progress_idle' => 'Idle',
             'progress_fmt' => 'Done %d/%d | Fail %d | Processing: %s',
             'dirs_title' => 'Folder List',
@@ -124,12 +125,12 @@ function t(string $key): string
             'files_not_selected' => 'No files selected',
             'upload_blocked_hint' => 'Some files could not be uploaded. If failures continue, try re-selecting the folder.',
             'drop_anywhere_hint' => 'Drag & drop one folder anywhere on this page.',
-            'drop_overlay' => 'Drop to select files for sync',
+            'drop_overlay' => 'Drop to select files for upload',
             'selection_status' => 'Selected files: %d',
             'drop_invalid_selection' => 'Drop exactly one folder.',
             'drop_selected' => 'Selected by drag & drop: %d file(s)',
             'load_failed' => 'Load failed',
-            'retry_unavailable' => 'cannot retry because it is not found in the current selection',
+            'retry_unavailable' => 'cannot re-upload because it is not found in the current selection',
             'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_login_guard.json via FTP.',
             'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_login_guard.json via FTP.',
@@ -137,18 +138,19 @@ function t(string $key): string
         ],
         'ja' => [
             'current_location' => '現在の場所',
-            'logout' => 'Logout',
+            'logout' => 'ログアウト',
             'setup_warning' => '初回セットアップで管理パスワードを設定してください。',
             'setup_title' => '初回セットアップ',
             'setup_desc' => '管理パスワードを設定してください（8文字以上）',
+            'login_button' => 'ログイン',
             'setup_failed' => 'セットアップ失敗',
             'login_title' => 'ログイン',
             'login_failed' => 'ログイン失敗',
-            'sync_title' => 'フォルダー同期',
-            'start_sync' => '同期開始',
-            'test_sync' => 'テスト実行(書き込みなし)',
-            'retry_failed' => '失敗のみ再送',
-            'sync_meta' => '同時送信数: 10 / 最大リトライ: なし / 同期開始はskip判定あり / テスト実行は書き込みなし',
+            'sync_title' => 'フォルダーアップロード',
+            'start_sync' => 'アップロード開始',
+            'test_sync' => 'テスト実行（アップロードなし）',
+            'retry_failed' => '失敗のみ再アップロード',
+            'sync_meta' => '同時送信数: 10 / 最大リトライ: なし / アップロード開始はskip判定あり / テスト実行はアップロードなし',
             'progress_idle' => '待機中',
             'progress_fmt' => '完了 %d/%d | 失敗 %d | 処理中: %s',
             'dirs_title' => 'フォルダー一覧',
@@ -157,12 +159,12 @@ function t(string $key): string
             'files_not_selected' => 'ファイルが選択されていません',
             'upload_blocked_hint' => 'アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。',
             'drop_anywhere_hint' => 'このページ全体にフォルダーをドラッグ&ドロップできます。',
-            'drop_overlay' => 'ここにドロップして同期対象を選択',
+            'drop_overlay' => 'ここにドロップしてアップロード対象を選択',
             'selection_status' => '選択中ファイル: %d',
             'drop_invalid_selection' => 'フォルダー1つだけドロップしてください。',
             'drop_selected' => 'ドラッグ&ドロップで選択: %d ファイル',
             'load_failed' => '読み込み失敗',
-            'retry_unavailable' => '現在の選択に見つからないため再送不可',
+            'retry_unavailable' => '現在の選択に見つからないため再アップロード不可',
             'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
             'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
@@ -1089,6 +1091,9 @@ body {
     margin-bottom: 12px;
     box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
 }
+.card:not(:has(> *)) {
+    display: none;
+}
 h1 { margin: 0 0 6px; font-size: 1.6rem; }
 h2 { margin: 0 0 10px; font-size: 1.1rem; }
 .small { font-size: 0.9rem; color: var(--muted); }
@@ -1168,7 +1173,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 <body>
 <div class="container">
     <div class="card">
-        <div class="small"><?= h(t('current_location')) ?>: <?= h(rtrim(str_replace('\\', '/', ROOT_DIR), '/') . '/') ?></div>
         <?php if (is_authed()): ?>
         <form id="logoutForm" method="post" class="row" style="margin-top:8px;">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
@@ -1200,7 +1204,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <div class="row">
                 <input type="password" name="password" placeholder="password" required>
-                <button class="primary" type="submit">Login</button>
+                <button class="primary" type="submit"><?= h(t('login_button')) ?></button>
             </div>
             <div id="loginError" class="small error"></div>
         </form>
@@ -1218,7 +1222,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         </div>
         <div class="small drop-hint" id="dropHint"><?= h(t('drop_anywhere_hint')) ?></div>
         <div class="small" id="selectionStatus"><?= h(str_replace('%d', '0', t('selection_status'))) ?></div>
-        <div class="small"><?= h(t('sync_meta')) ?></div>
         <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
         <div class="small" id="progressText"><?= h(t('progress_idle')) ?></div>
         <div id="log"></div>
@@ -1229,6 +1232,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             <h2><?= h(t('dirs_title')) ?></h2>
             <button id="refreshDirs" type="button"><?= h(t('dirs_reload')) ?></button>
         </div>
+        <div class="small"><?= h(t('current_location')) ?>: <?= h(rtrim(str_replace('\\', '/', ROOT_DIR), '/') . '/') ?></div>
         <table id="dirTable">
             <thead>
                 <tr><th>Path</th><th class="num">Files</th><th class="num">Bytes</th></tr>
@@ -1387,6 +1391,12 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         logEl.scrollTop = logEl.scrollHeight;
     }
 
+    function clearLog() {
+        logEl.innerHTML = '';
+        logEl.classList.remove('error');
+        logEl.scrollTop = 0;
+    }
+
     function localizeErrorMessage(message) {
         const key = String(message || '');
         if (Object.prototype.hasOwnProperty.call(i18n, key)) {
@@ -1504,7 +1514,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         const dryRun = options.dryRun === true;
         const force = options.force === true;
         const trackFailed = options.trackFailed !== false;
-        const modeLabel = dryRun ? 'dry-run' : 'sync';
+        const modeLabel = dryRun ? 'dry-run' : 'upload';
         const previousRetryDisabled = retryFailedBtn.disabled;
         const wasClientReadErrorLocked = hasClientReadErrorSinceSelection;
         let unresolvedClientReadError = false;
@@ -1534,7 +1544,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             if (dryRun) {
                 appendLog(`🧪 dry-run started: ${jobId}`, false, 'log-dryrun-start');
             } else {
-                appendLog(`▶ sync started: ${jobId}`, false, 'log-sync-start');
+                appendLog(`▶ upload started: ${jobId}`, false, 'log-sync-start');
             }
 
             const concurrency = 10;
@@ -1594,7 +1604,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             const displayedFail = Math.max(Number(s.fail || 0), fail);
 
             appendLog(`${modeLabel} finished: ok=${s.ok}, skip=${s.skip}, fail=${displayedFail}`);
-            setProgress(s.done, s.total, s.current_path || '', displayedFail);
+            setProgress(s.done, s.total, '', displayedFail);
         } finally {
             hasClientReadErrorSinceSelection = unresolvedClientReadError;
             if (hasClientReadErrorSinceSelection) {
@@ -1749,9 +1759,10 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             if (!(await refreshSelectionIfNeeded())) {
                 return;
             }
+            clearLog();
             await runSync(selectedFiles(), { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
-            appendLog(`sync error: ${localizeErrorMessage(error.message)}`, true);
+            appendLog(`upload error: ${localizeErrorMessage(error.message)}`, true);
         }
     });
 
@@ -1760,6 +1771,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
             if (!(await refreshSelectionIfNeeded())) {
                 return;
             }
+            clearLog();
             await runSync(selectedFiles(), { dryRun: true, force: false, trackFailed: false });
         } catch (error) {
             appendLog(`dry-run error: ${localizeErrorMessage(error.message)}`, true);
