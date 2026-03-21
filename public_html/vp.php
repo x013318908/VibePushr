@@ -40,6 +40,7 @@ session_set_cookie_params([
 session_start();
 
 const ROOT_DIR = __DIR__;
+const PRIVATE_DIR_NAME = '.vp_data';
 const JOB_DIR_NAME = '.vp_jobs';
 const LOG_FILE_NAME = 'vp.log';
 const AUTH_FILE_NAME = '.vp_auth.php';
@@ -131,9 +132,9 @@ function t(string $key): string
             'drop_selected' => 'Selected by drag & drop: %d file(s)',
             'load_failed' => 'Load failed',
             'retry_unavailable' => 'cannot re-upload because it is not found in the current selection',
-            'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_login_guard.json via FTP.',
-            'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_login_guard.json via FTP.',
-            'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_login_guard.json via FTP.',
+            'login_locked_idle' => 'Login is locked due to long inactivity. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
+            'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
+            'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
             'unicode_filename_mismatch' => 'On some servers, non-ASCII filenames may cause issues.',
         ],
         'ja' => [
@@ -165,9 +166,9 @@ function t(string $key): string
             'drop_selected' => 'ドラッグ&ドロップで選択: %d ファイル',
             'load_failed' => '読み込み失敗',
             'retry_unavailable' => '現在の選択に見つからないため再アップロード不可',
-            'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
-            'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
-            'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_login_guard.json を削除して復旧してください。',
+            'login_locked_idle' => '長期間未使用のためログインがロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
+            'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
+            'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
             'unicode_filename_mismatch' => '一部のサーバーでは日本語ファイル名が問題になることがあります。',
         ],
     ];
@@ -233,9 +234,39 @@ function require_auth(): void
     }
 }
 
+function private_dir(): string
+{
+    $dir = ROOT_DIR . DIRECTORY_SEPARATOR . PRIVATE_DIR_NAME;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+
+    return $dir;
+}
+
+function legacy_auth_file_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . AUTH_FILE_NAME;
+}
+
+function legacy_login_guard_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . LOGIN_GUARD_FILE_NAME;
+}
+
+function legacy_log_file_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . LOG_FILE_NAME;
+}
+
+function legacy_jobs_dir_path(): string
+{
+    return ROOT_DIR . DIRECTORY_SEPARATOR . JOB_DIR_NAME;
+}
+
 function jobs_dir(): string
 {
-    $dir = ROOT_DIR . DIRECTORY_SEPARATOR . JOB_DIR_NAME;
+    $dir = private_dir() . DIRECTORY_SEPARATOR . JOB_DIR_NAME;
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
     }
@@ -246,17 +277,39 @@ function jobs_dir(): string
 function log_audit(string $message): void
 {
     $line = sprintf('[%s] %s %s' . "\n", now_iso(), $_SERVER['REMOTE_ADDR'] ?? '-', $message);
-    @file_put_contents(ROOT_DIR . DIRECTORY_SEPARATOR . LOG_FILE_NAME, $line, FILE_APPEND | LOCK_EX);
+    @file_put_contents(private_dir() . DIRECTORY_SEPARATOR . LOG_FILE_NAME, $line, FILE_APPEND | LOCK_EX);
 }
 
 function auth_file_path(): string
 {
-    return ROOT_DIR . DIRECTORY_SEPARATOR . AUTH_FILE_NAME;
+    return private_dir() . DIRECTORY_SEPARATOR . AUTH_FILE_NAME;
 }
 
 function login_guard_path(): string
 {
-    return ROOT_DIR . DIRECTORY_SEPARATOR . LOGIN_GUARD_FILE_NAME;
+    return private_dir() . DIRECTORY_SEPARATOR . LOGIN_GUARD_FILE_NAME;
+}
+
+function migrate_legacy_internal_files(): void
+{
+    $targets = [
+        legacy_auth_file_path() => auth_file_path(),
+        legacy_login_guard_path() => login_guard_path(),
+        legacy_log_file_path() => private_dir() . DIRECTORY_SEPARATOR . LOG_FILE_NAME,
+    ];
+
+    foreach ($targets as $legacy => $current) {
+        if (!is_file($legacy) || is_file($current)) {
+            continue;
+        }
+        @rename($legacy, $current);
+    }
+
+    $legacyJobs = legacy_jobs_dir_path();
+    $currentJobs = private_dir() . DIRECTORY_SEPARATOR . JOB_DIR_NAME;
+    if (is_dir($legacyJobs) && !is_dir($currentJobs)) {
+        @rename($legacyJobs, $currentJobs);
+    }
 }
 
 function should_block_for_idle(?int $lastLoginAtTs, int $nowTs, int $limitDays): bool
@@ -423,18 +476,20 @@ function evaluate_login_guard_after_password_failure(): array
 
 function load_password_hash_from_file(): ?string
 {
-    $path = auth_file_path();
-    if (!is_file($path)) {
-        return null;
+    foreach ([auth_file_path(), legacy_auth_file_path()] as $path) {
+        if (!is_file($path)) {
+            continue;
+        }
+        $data = @require $path;
+        if (!is_array($data)) {
+            continue;
+        }
+        $hash = $data['hash'] ?? null;
+        if (is_string($hash) && $hash !== '') {
+            return $hash;
+        }
     }
-
-    $data = @require $path;
-    if (!is_array($data)) {
-        return null;
-    }
-
-    $hash = $data['hash'] ?? null;
-    return is_string($hash) && $hash !== '' ? $hash : null;
+    return null;
 }
 
 function save_password_hash_file(string $hash): bool
@@ -733,6 +788,7 @@ if (defined('VP_UNIT_TEST_MODE') && VP_UNIT_TEST_MODE === true) {
     return;
 }
 
+migrate_legacy_internal_files();
 $effectiveHash = load_password_hash_from_file() ?? '';
 $setupRequired = $effectiveHash === '';
 $action = (string) ($_REQUEST['action'] ?? '');
