@@ -126,8 +126,9 @@ function t(string $key): string
             'files_not_selected' => 'No files selected',
             'upload_blocked_hint' => 'Some files could not be uploaded. If failures continue, try re-selecting the folder.',
             'drop_anywhere_hint' => 'Drag & drop one folder anywhere on this page.',
+            'drop_or_click_hint' => 'Drop a folder here, or click to select one.',
             'drop_overlay' => 'Drop to select files for upload',
-            'selection_status' => 'Selected files: %d',
+            'selection_status' => '%d files selected',
             'drop_invalid_selection' => 'Drop exactly one folder.',
             'drop_selected' => 'Selected by drag & drop: %d file(s)',
             'load_failed' => 'Load failed',
@@ -160,8 +161,9 @@ function t(string $key): string
             'files_not_selected' => 'ファイルが選択されていません',
             'upload_blocked_hint' => 'アップロードできないファイルがありました。繰り返し失敗する場合は、フォルダーを選択し直してみてください。',
             'drop_anywhere_hint' => 'このページ全体にフォルダーをドラッグ&ドロップできます。',
+            'drop_or_click_hint' => 'ここにフォルダーをドロップ、またはクリックして選択',
             'drop_overlay' => 'ここにドロップしてアップロード対象を選択',
-            'selection_status' => '選択中ファイル: %d',
+            'selection_status' => '%d 個のファイルを選択中',
             'drop_invalid_selection' => 'フォルダー1つだけドロップしてください。',
             'drop_selected' => 'ドラッグ&ドロップで選択: %d ファイル',
             'load_failed' => '読み込み失敗',
@@ -1270,6 +1272,40 @@ input:focus, button:focus, select:focus, a:focus {
     background: var(--surface);
     padding: 8px 10px;
 }
+.folder-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+}
+.folder-picker {
+    width: 100%;
+    min-height: 110px;
+    text-align: left;
+    border: 1px dashed var(--line-strong);
+    background: var(--surface);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 10px;
+}
+.folder-picker:hover {
+    background: var(--surface-strong);
+}
+.folder-picker-status {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.folder-picker-hint {
+    display: block;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
 .drop-overlay {
     position: fixed;
     inset: 0;
@@ -1334,14 +1370,16 @@ input:focus, button:focus, select:focus, a:focus {
     <div id="dropOverlay" class="drop-overlay"><?= h(t('drop_overlay')) ?></div>
     <div class="card">
         <h2><?= h(t('sync_title')) ?></h2>
+        <input type="file" id="folderInput" class="folder-input-hidden" webkitdirectory directory multiple>
+        <button id="folderPicker" class="folder-picker" type="button">
+            <span id="selectionStatus" class="folder-picker-status"><?= h(str_replace('%d', '0', t('selection_status'))) ?></span>
+            <span class="folder-picker-hint"><?= h(t('drop_or_click_hint')) ?></span>
+        </button>
         <div class="row">
-            <input type="file" id="folderInput" webkitdirectory directory multiple>
-            <button class="primary" id="startSync" type="button"><?= h(t('start_sync')) ?></button>
-            <button id="testSync" type="button"><?= h(t('test_sync')) ?></button>
+            <button id="startSync" type="button" disabled><?= h(t('start_sync')) ?></button>
+            <button id="testSync" type="button" disabled><?= h(t('test_sync')) ?></button>
             <button id="retryFailed" type="button" disabled><?= h(t('retry_failed')) ?></button>
         </div>
-        <div class="small drop-hint" id="dropHint"><?= h(t('drop_anywhere_hint')) ?></div>
-        <div class="small" id="selectionStatus"><?= h(str_replace('%d', '0', t('selection_status'))) ?></div>
         <div style="margin-top:10px;"><progress id="progressBar" value="0" max="1"></progress></div>
         <div class="small" id="progressText"><?= h(t('progress_idle')) ?></div>
         <div id="log"></div>
@@ -1459,6 +1497,7 @@ input:focus, button:focus, select:focus, a:focus {
     const dirBody = document.getElementById('dirBody');
     const refreshDirs = document.getElementById('refreshDirs');
     const folderInput = document.getElementById('folderInput');
+    const folderPicker = document.getElementById('folderPicker');
     const startSyncBtn = document.getElementById('startSync');
     const testSyncBtn = document.getElementById('testSync');
     const retryFailedBtn = document.getElementById('retryFailed');
@@ -1553,7 +1592,15 @@ input:focus, button:focus, select:focus, a:focus {
         if (!selectionStatus) {
             return;
         }
-        selectionStatus.textContent = i18n.selection_status.replace('%d', String(selectedFiles().length));
+        const count = selectedFiles().length;
+        selectionStatus.textContent = i18n.selection_status.replace('%d', String(count));
+        selectionStatus.style.display = count === 0 ? 'none' : 'block';
+    }
+
+    function updateSyncButtonsBySelection() {
+        const hasSelection = selectedFiles().length > 0;
+        startSyncBtn.disabled = !hasSelection;
+        testSyncBtn.disabled = !hasSelection;
     }
 
     function currentFileMap() {
@@ -1730,17 +1777,16 @@ input:focus, button:focus, select:focus, a:focus {
                 if (!wasClientReadErrorLocked) {
                     appendLog(i18n.upload_blocked_hint, true);
                 }
-                startSyncBtn.disabled = false;
+                updateSyncButtonsBySelection();
                 retryFailedBtn.disabled = failedRelpaths.length === 0;
             } else {
-                startSyncBtn.disabled = false;
+                updateSyncButtonsBySelection();
                 if (dryRun) {
                     retryFailedBtn.disabled = previousRetryDisabled;
                 } else {
                     retryFailedBtn.disabled = failedRelpaths.length === 0;
                 }
             }
-            testSyncBtn.disabled = false;
         }
     }
 
@@ -1768,10 +1814,14 @@ input:focus, button:focus, select:focus, a:focus {
         loadDirs();
     });
 
+    folderPicker.addEventListener('click', () => {
+        folderInput.click();
+    });
+
     folderInput.addEventListener('change', () => {
         droppedFiles = [];
         hasClientReadErrorSinceSelection = false;
-        startSyncBtn.disabled = false;
+        updateSyncButtonsBySelection();
         retryFailedBtn.disabled = failedRelpaths.length === 0;
         updateSelectionStatus();
     });
@@ -1864,7 +1914,7 @@ input:focus, button:focus, select:focus, a:focus {
             } catch (_) {
             }
             hasClientReadErrorSinceSelection = false;
-            startSyncBtn.disabled = false;
+            updateSyncButtonsBySelection();
             retryFailedBtn.disabled = failedRelpaths.length === 0;
             updateSelectionStatus();
             appendLog(i18n.drop_selected.replace('%d', String(files.length)));
@@ -1941,6 +1991,7 @@ input:focus, button:focus, select:focus, a:focus {
 
     loadDirs();
     updateSelectionStatus();
+    updateSyncButtonsBySelection();
 })();
 </script>
 </body>

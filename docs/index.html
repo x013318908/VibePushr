@@ -7,6 +7,7 @@
   <meta name="description" content="VibePushr is a single-file PHP app. Download vp.php and upload it to your server.">
   <style>
     :root {
+      color-scheme: light dark;
       --bg: #f6f8f9;
       --paper: #ffffff;
       --text: #132028;
@@ -14,6 +15,27 @@
       --line: #d8e1e5;
       --accent: #0a6b56;
       --accent-strong: #075447;
+      --btn-bg: #ffffff;
+      --code-bg: #f1f5f7;
+      --code-line: #e1e9ed;
+      --bg-grad-a: #dff4ef;
+      --bg-grad-b: #e6f3ff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1418;
+        --paper: #111b20;
+        --text: #e7f0f4;
+        --muted: #9bb0bb;
+        --line: #2a3b43;
+        --accent: #2ebd98;
+        --accent-strong: #27a684;
+        --btn-bg: #152129;
+        --code-bg: #1a2830;
+        --code-line: #2b3f49;
+        --bg-grad-a: #173028;
+        --bg-grad-b: #1a2f46;
+      }
     }
     * { box-sizing: border-box; }
     body {
@@ -21,8 +43,8 @@
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
       color: var(--text);
       background:
-        radial-gradient(1200px 300px at 20% -10%, #dff4ef 0%, transparent 60%),
-        radial-gradient(1200px 400px at 100% 0%, #e6f3ff 0%, transparent 55%),
+        radial-gradient(1200px 300px at 20% -10%, var(--bg-grad-a) 0%, transparent 60%),
+        radial-gradient(1200px 400px at 100% 0%, var(--bg-grad-b) 0%, transparent 55%),
         var(--bg);
     }
     .wrap {
@@ -67,7 +89,7 @@
       padding: 10px 14px;
       border: 1px solid var(--line);
       color: var(--text);
-      background: #fff;
+      background: var(--btn-bg);
       font-weight: 600;
     }
     .btn.primary {
@@ -80,8 +102,8 @@
       border-color: var(--accent-strong);
     }
     code {
-      background: #f1f5f7;
-      border: 1px solid #e1e9ed;
+      background: var(--code-bg);
+      border: 1px solid var(--code-line);
       border-radius: 6px;
       padding: 1px 6px;
     }
