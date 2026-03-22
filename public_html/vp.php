@@ -136,6 +136,10 @@ function t(string $key): string
             'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
             'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
             'unicode_filename_mismatch' => 'On some servers, non-ASCII filenames may cause issues.',
+            'theme_label' => 'Theme',
+            'theme_system' => 'System',
+            'theme_light' => 'Light',
+            'theme_dark' => 'Dark',
         ],
         'ja' => [
             'current_location' => '現在の場所',
@@ -170,6 +174,10 @@ function t(string $key): string
             'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
             'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
             'unicode_filename_mismatch' => '一部のサーバーでは日本語ファイル名が問題になることがあります。',
+            'theme_label' => 'テーマ',
+            'theme_system' => 'システム設定',
+            'theme_light' => 'ライト',
+            'theme_dark' => 'ダーク',
         ],
     ];
     $lang = app_lang();
@@ -1117,23 +1125,127 @@ $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $req
 <title>VibePushr</title>
 <style>
 :root {
-    --bg: #f6f8fa;
+    color-scheme: light dark;
+    --bg: #f3f5f7;
     --card: #ffffff;
+    --surface: #f7f9fb;
+    --surface-strong: #eef2f6;
+    --input-bg: #ffffff;
     --line: #d0d7de;
     --line-strong: #8c959f;
-    --text: #24292f;
-    --muted: #57606a;
-    --accent: #2da44e;
-    --accent-hover: #2c974b;
+    --text: #1f2328;
+    --muted: #59636e;
+    --accent: #1f883d;
+    --accent-hover: #1a7f37;
+    --accent-contrast: #ffffff;
     --danger: #cf222e;
+    --warn: #9a6700;
+    --link: #0969da;
+    --link-hover: #0550ae;
+    --shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
+    --progress-track: #e7edf3;
+    --progress-value: #1f883d;
+    --log-upload: #0f766e;
+    --log-dryrun: #075985;
+    --overlay-bg: rgba(9, 105, 218, 0.16);
+    --overlay-line: rgba(9, 105, 218, 0.45);
+    --overlay-text: #0550ae;
+    --focus-ring: rgba(9, 105, 218, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #0d1117;
+        --card: #161b22;
+        --surface: #0f141b;
+        --surface-strong: #1c232d;
+        --input-bg: #0d1117;
+        --line: #30363d;
+        --line-strong: #6e7681;
+        --text: #e6edf3;
+        --muted: #9da7b3;
+        --accent: #3fb950;
+        --accent-hover: #46c95b;
+        --accent-contrast: #08130d;
+        --danger: #ff7b72;
+        --warn: #e3b341;
+        --link: #58a6ff;
+        --link-hover: #79c0ff;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+        --progress-track: #1c232d;
+        --progress-value: #3fb950;
+        --log-upload: #34d399;
+        --log-dryrun: #7dd3fc;
+        --overlay-bg: rgba(88, 166, 255, 0.18);
+        --overlay-line: rgba(88, 166, 255, 0.45);
+        --overlay-text: #dbeafe;
+        --focus-ring: rgba(88, 166, 255, 0.45);
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #0d1117;
+    --card: #161b22;
+    --surface: #0f141b;
+    --surface-strong: #1c232d;
+    --input-bg: #0d1117;
+    --line: #30363d;
+    --line-strong: #6e7681;
+    --text: #e6edf3;
+    --muted: #9da7b3;
+    --accent: #3fb950;
+    --accent-hover: #46c95b;
+    --accent-contrast: #08130d;
+    --danger: #ff7b72;
+    --warn: #e3b341;
+    --link: #58a6ff;
+    --link-hover: #79c0ff;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+    --progress-track: #1c232d;
+    --progress-value: #3fb950;
+    --log-upload: #34d399;
+    --log-dryrun: #7dd3fc;
+    --overlay-bg: rgba(88, 166, 255, 0.18);
+    --overlay-line: rgba(88, 166, 255, 0.45);
+    --overlay-text: #dbeafe;
+    --focus-ring: rgba(88, 166, 255, 0.45);
+}
+:root[data-theme="light"] {
+    --bg: #f3f5f7;
+    --card: #ffffff;
+    --surface: #f7f9fb;
+    --surface-strong: #eef2f6;
+    --input-bg: #ffffff;
+    --line: #d0d7de;
+    --line-strong: #8c959f;
+    --text: #1f2328;
+    --muted: #59636e;
+    --accent: #1f883d;
+    --accent-hover: #1a7f37;
+    --accent-contrast: #ffffff;
+    --danger: #cf222e;
+    --warn: #9a6700;
+    --link: #0969da;
+    --link-hover: #0550ae;
+    --shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
+    --progress-track: #e7edf3;
+    --progress-value: #1f883d;
+    --log-upload: #0f766e;
+    --log-dryrun: #075985;
+    --overlay-bg: rgba(9, 105, 218, 0.16);
+    --overlay-line: rgba(9, 105, 218, 0.45);
+    --overlay-text: #0550ae;
+    --focus-ring: rgba(9, 105, 218, 0.35);
 }
 * { box-sizing: border-box; }
+html, body { min-height: 100%; }
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
     color: var(--text);
     background: var(--bg);
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
 .container {
     max-width: 980px;
     margin: 22px auto;
@@ -1142,10 +1254,11 @@ body {
 .card {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: 10px;
     padding: 14px;
     margin-bottom: 12px;
-    box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
+    box-shadow: var(--shadow);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .card:not(:has(> *)) {
     display: none;
@@ -1154,16 +1267,27 @@ h1 { margin: 0 0 6px; font-size: 1.6rem; }
 h2 { margin: 0 0 10px; font-size: 1.1rem; }
 .small { font-size: 0.9rem; color: var(--muted); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-input, button {
+.toolbar-row { justify-content: space-between; }
+.theme-control { margin-left: auto; gap: 6px; }
+.theme-control label { font-size: 0.9rem; color: var(--muted); }
+input, button, select {
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     font-size: 14px;
     padding: 8px 10px;
+    color: var(--text);
+    background: var(--input-bg);
 }
-button { background: #f6f8fa; cursor: pointer; }
-button.primary { background: var(--accent); border-color: rgba(27, 31, 36, 0.15); color: #fff; }
-button.primary:hover { background: var(--accent-hover); }
+input::placeholder { color: var(--muted); }
+button { background: var(--surface); cursor: pointer; }
+button:hover:not(:disabled) { background: var(--surface-strong); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
+input:focus, button:focus, select:focus, a:focus {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
 #dirTable { width: 100%; border-collapse: collapse; }
 #dirTable th, #dirTable td {
     border-bottom: 1px solid var(--line);
@@ -1171,10 +1295,14 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     padding: 8px 6px;
     font-size: 0.94rem;
 }
+#dirTable th { background: var(--surface); }
 #dirTable th.num, #dirTable td.num {
     text-align: right;
 }
-#progressBar { width: 100%; height: 14px; }
+#progressBar { width: 100%; height: 14px; accent-color: var(--progress-value); }
+#progressBar::-webkit-progress-bar { background: var(--progress-track); border-radius: 999px; }
+#progressBar::-webkit-progress-value { background: var(--progress-value); border-radius: 999px; }
+#progressBar::-moz-progress-bar { background: var(--progress-value); border-radius: 999px; }
 #log {
     margin-top: 8px;
     min-height: 80px;
@@ -1182,7 +1310,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     overflow-y: auto;
     border: 1px dashed var(--line);
     border-radius: 8px;
-    background: #fafcfd;
+    background: var(--surface);
     padding: 8px;
     white-space: pre-wrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1192,19 +1320,19 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .log-error { color: var(--danger); }
 .log-sync-start {
     font-weight: 700;
-    color: #0b6b57;
+    color: var(--log-upload);
 }
 .log-dryrun-start {
     font-weight: 700;
-    color: #0b4f8c;
+    color: var(--log-dryrun);
 }
 .error { color: var(--danger); }
-.warn { color: #9a6700; }
+.warn { color: var(--warn); }
 .drop-hint {
     margin-top: 8px;
     border: 1px dashed var(--line-strong);
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--surface);
     padding: 8px 10px;
 }
 .drop-overlay {
@@ -1214,27 +1342,52 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     display: none;
     align-items: center;
     justify-content: center;
-    background: rgba(9, 105, 218, 0.16);
-    border: 3px dashed rgba(9, 105, 218, 0.45);
-    color: #0550ae;
+    background: var(--overlay-bg);
+    border: 3px dashed var(--overlay-line);
+    color: var(--overlay-text);
     font-weight: 700;
     font-size: 1.2rem;
     pointer-events: none;
+    backdrop-filter: blur(2px);
 }
 .drop-overlay.active {
     display: flex;
+}
+@media (max-width: 640px) {
+    .toolbar-row, .theme-control {
+        align-items: stretch;
+    }
+    .theme-control {
+        margin-left: 0;
+        width: 100%;
+    }
+    .theme-control select {
+        flex: 1 1 auto;
+    }
 }
 </style>
 </head>
 <body>
 <div class="container">
     <div class="card">
-        <?php if (is_authed()): ?>
-        <form id="logoutForm" method="post" class="row" style="margin-top:8px;">
-            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-            <button type="submit"><?= h(t('logout')) ?></button>
-        </form>
-        <?php endif; ?>
+        <div class="row toolbar-row">
+            <?php if (is_authed()): ?>
+            <form id="logoutForm" method="post" class="row">
+                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+                <button type="submit"><?= h(t('logout')) ?></button>
+            </form>
+            <?php else: ?>
+            <div></div>
+            <?php endif; ?>
+            <div class="row theme-control">
+                <label for="themeSelect"><?= h(t('theme_label')) ?></label>
+                <select id="themeSelect">
+                    <option value="system"><?= h(t('theme_system')) ?></option>
+                    <option value="light"><?= h(t('theme_light')) ?></option>
+                    <option value="dark"><?= h(t('theme_dark')) ?></option>
+                </select>
+            </div>
+        </div>
         <?php if ($setupRequired): ?>
         <div class="small warn"><?= h(t('setup_warning')) ?></div>
         <?php endif; ?>
@@ -1324,6 +1477,33 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     const isAuthed = <?= is_authed() ? 'true' : 'false' ?>;
     const scriptBaseUrl = <?= json_encode($scriptBaseUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const i18n = <?= json_encode($uiText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const themeStorageKey = 'vp-theme';
+
+    function storedThemePreference() {
+        const saved = window.localStorage.getItem(themeStorageKey);
+        return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+    }
+
+    function systemThemePreference() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function applyThemePreference(theme) {
+        const normalized = theme === 'light' || theme === 'dark' ? theme : 'system';
+        if (normalized === 'system') {
+            document.documentElement.setAttribute('data-theme', 'system');
+            document.documentElement.setAttribute('data-effective-theme', systemThemePreference());
+        } else {
+            document.documentElement.setAttribute('data-theme', normalized);
+            document.documentElement.setAttribute('data-effective-theme', normalized);
+        }
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect && themeSelect.value !== normalized) {
+            themeSelect.value = normalized;
+        }
+    }
+
+    applyThemePreference(storedThemePreference());
 
     async function api(action, options = {}) {
         const method = options.method || 'GET';
@@ -1352,6 +1532,30 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
         }
 
         return data;
+    }
+
+    const themeSelect = document.getElementById('themeSelect');
+    const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+
+    if (themeSelect) {
+        themeSelect.value = storedThemePreference();
+        themeSelect.addEventListener('change', () => {
+            const nextTheme = themeSelect.value === 'light' || themeSelect.value === 'dark' ? themeSelect.value : 'system';
+            window.localStorage.setItem(themeStorageKey, nextTheme);
+            applyThemePreference(nextTheme);
+        });
+    }
+
+    const handleSystemThemeChange = () => {
+        if (storedThemePreference() === 'system') {
+            applyThemePreference('system');
+        }
+    };
+
+    if (typeof systemThemeMedia.addEventListener === 'function') {
+        systemThemeMedia.addEventListener('change', handleSystemThemeChange);
+    } else if (typeof systemThemeMedia.addListener === 'function') {
+        systemThemeMedia.addListener(handleSystemThemeChange);
     }
 
     if (!isAuthed) {
