@@ -73,15 +73,6 @@ Only `vp.php` is required for deployment.
 
 ---
 
-## Optional: just
-
-If `just` is installed:
-
-- `just lint`
-- `just test`
-- `just audit`
-- `just check`
-
 ---
 
 ## CI

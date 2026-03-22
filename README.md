@@ -39,15 +39,6 @@ AIで作ったコードを、その勢いのままサーバーに反映できま
 - 依存監査: `./scripts/audit.ps1`
 - 一括チェック: `./scripts/check.ps1`
 
-## Optional: just
-
-`just` がある場合は以下でも実行できます。
-
-- `just lint`
-- `just test`
-- `just audit`
-- `just check`
-
 ## CI
 
 - GitHub Actions (`.github/workflows/ci.yml`) で `main` への push / PR 時に lint と PHPUnit を実行します。
