@@ -136,10 +136,6 @@ function t(string $key): string
             'login_locked_failures' => 'Login is locked because the failed-attempt limit was reached. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
             'login_locked' => 'Login is locked. Recover by deleting public_html/.vp_data/.vp_login_guard.json via FTP.',
             'unicode_filename_mismatch' => 'On some servers, non-ASCII filenames may cause issues.',
-            'theme_label' => 'Theme',
-            'theme_system' => 'System',
-            'theme_light' => 'Light',
-            'theme_dark' => 'Dark',
         ],
         'ja' => [
             'current_location' => '現在の場所',
@@ -174,10 +170,6 @@ function t(string $key): string
             'login_locked_failures' => 'ログイン失敗回数の上限に達したためロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
             'login_locked' => 'ログインがロックされています。FTP等で public_html/.vp_data/.vp_login_guard.json を削除して復旧してください。',
             'unicode_filename_mismatch' => '一部のサーバーでは日本語ファイル名が問題になることがあります。',
-            'theme_label' => 'テーマ',
-            'theme_system' => 'システム設定',
-            'theme_light' => 'ライト',
-            'theme_dark' => 'ダーク',
         ],
     ];
     $lang = app_lang();
@@ -1153,7 +1145,7 @@ $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $req
     --focus-ring: rgba(9, 105, 218, 0.35);
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
+    :root {
         --bg: #0d1117;
         --card: #161b22;
         --surface: #0f141b;
@@ -1180,60 +1172,6 @@ $scriptBaseUrl = rtrim(str_replace('\\', '/', dirname($requestPath !== '' ? $req
         --overlay-text: #dbeafe;
         --focus-ring: rgba(88, 166, 255, 0.45);
     }
-}
-:root[data-theme="dark"] {
-    --bg: #0d1117;
-    --card: #161b22;
-    --surface: #0f141b;
-    --surface-strong: #1c232d;
-    --input-bg: #0d1117;
-    --line: #30363d;
-    --line-strong: #6e7681;
-    --text: #e6edf3;
-    --muted: #9da7b3;
-    --accent: #3fb950;
-    --accent-hover: #46c95b;
-    --accent-contrast: #08130d;
-    --danger: #ff7b72;
-    --warn: #e3b341;
-    --link: #58a6ff;
-    --link-hover: #79c0ff;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
-    --progress-track: #1c232d;
-    --progress-value: #3fb950;
-    --log-upload: #34d399;
-    --log-dryrun: #7dd3fc;
-    --overlay-bg: rgba(88, 166, 255, 0.18);
-    --overlay-line: rgba(88, 166, 255, 0.45);
-    --overlay-text: #dbeafe;
-    --focus-ring: rgba(88, 166, 255, 0.45);
-}
-:root[data-theme="light"] {
-    --bg: #f3f5f7;
-    --card: #ffffff;
-    --surface: #f7f9fb;
-    --surface-strong: #eef2f6;
-    --input-bg: #ffffff;
-    --line: #d0d7de;
-    --line-strong: #8c959f;
-    --text: #1f2328;
-    --muted: #59636e;
-    --accent: #1f883d;
-    --accent-hover: #1a7f37;
-    --accent-contrast: #ffffff;
-    --danger: #cf222e;
-    --warn: #9a6700;
-    --link: #0969da;
-    --link-hover: #0550ae;
-    --shadow: 0 1px 0 rgba(27, 31, 36, 0.04);
-    --progress-track: #e7edf3;
-    --progress-value: #1f883d;
-    --log-upload: #0f766e;
-    --log-dryrun: #075985;
-    --overlay-bg: rgba(9, 105, 218, 0.16);
-    --overlay-line: rgba(9, 105, 218, 0.45);
-    --overlay-text: #0550ae;
-    --focus-ring: rgba(9, 105, 218, 0.35);
 }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
@@ -1267,9 +1205,6 @@ h1 { margin: 0 0 6px; font-size: 1.6rem; }
 h2 { margin: 0 0 10px; font-size: 1.1rem; }
 .small { font-size: 0.9rem; color: var(--muted); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.toolbar-row { justify-content: space-between; }
-.theme-control { margin-left: auto; gap: 6px; }
-.theme-control label { font-size: 0.9rem; color: var(--muted); }
 input, button, select {
     border: 1px solid var(--line-strong);
     border-radius: 8px;
@@ -1353,41 +1288,17 @@ input:focus, button:focus, select:focus, a:focus {
 .drop-overlay.active {
     display: flex;
 }
-@media (max-width: 640px) {
-    .toolbar-row, .theme-control {
-        align-items: stretch;
-    }
-    .theme-control {
-        margin-left: 0;
-        width: 100%;
-    }
-    .theme-control select {
-        flex: 1 1 auto;
-    }
-}
 </style>
 </head>
 <body>
 <div class="container">
     <div class="card">
-        <div class="row toolbar-row">
-            <?php if (is_authed()): ?>
-            <form id="logoutForm" method="post" class="row">
-                <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
-                <button type="submit"><?= h(t('logout')) ?></button>
-            </form>
-            <?php else: ?>
-            <div></div>
-            <?php endif; ?>
-            <div class="row theme-control">
-                <label for="themeSelect"><?= h(t('theme_label')) ?></label>
-                <select id="themeSelect">
-                    <option value="system"><?= h(t('theme_system')) ?></option>
-                    <option value="light"><?= h(t('theme_light')) ?></option>
-                    <option value="dark"><?= h(t('theme_dark')) ?></option>
-                </select>
-            </div>
-        </div>
+        <?php if (is_authed()): ?>
+        <form id="logoutForm" method="post" class="row">
+            <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
+            <button type="submit"><?= h(t('logout')) ?></button>
+        </form>
+        <?php endif; ?>
         <?php if ($setupRequired): ?>
         <div class="small warn"><?= h(t('setup_warning')) ?></div>
         <?php endif; ?>
@@ -1477,34 +1388,6 @@ input:focus, button:focus, select:focus, a:focus {
     const isAuthed = <?= is_authed() ? 'true' : 'false' ?>;
     const scriptBaseUrl = <?= json_encode($scriptBaseUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const i18n = <?= json_encode($uiText, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    const themeStorageKey = 'vp-theme';
-
-    function storedThemePreference() {
-        const saved = window.localStorage.getItem(themeStorageKey);
-        return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
-    }
-
-    function systemThemePreference() {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-
-    function applyThemePreference(theme) {
-        const normalized = theme === 'light' || theme === 'dark' ? theme : 'system';
-        if (normalized === 'system') {
-            document.documentElement.setAttribute('data-theme', 'system');
-            document.documentElement.setAttribute('data-effective-theme', systemThemePreference());
-        } else {
-            document.documentElement.setAttribute('data-theme', normalized);
-            document.documentElement.setAttribute('data-effective-theme', normalized);
-        }
-        const themeSelect = document.getElementById('themeSelect');
-        if (themeSelect && themeSelect.value !== normalized) {
-            themeSelect.value = normalized;
-        }
-    }
-
-    applyThemePreference(storedThemePreference());
-
     async function api(action, options = {}) {
         const method = options.method || 'GET';
         const headers = Object.assign({}, options.headers || {});
@@ -1532,30 +1415,6 @@ input:focus, button:focus, select:focus, a:focus {
         }
 
         return data;
-    }
-
-    const themeSelect = document.getElementById('themeSelect');
-    const systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
-
-    if (themeSelect) {
-        themeSelect.value = storedThemePreference();
-        themeSelect.addEventListener('change', () => {
-            const nextTheme = themeSelect.value === 'light' || themeSelect.value === 'dark' ? themeSelect.value : 'system';
-            window.localStorage.setItem(themeStorageKey, nextTheme);
-            applyThemePreference(nextTheme);
-        });
-    }
-
-    const handleSystemThemeChange = () => {
-        if (storedThemePreference() === 'system') {
-            applyThemePreference('system');
-        }
-    };
-
-    if (typeof systemThemeMedia.addEventListener === 'function') {
-        systemThemeMedia.addEventListener('change', handleSystemThemeChange);
-    } else if (typeof systemThemeMedia.addListener === 'function') {
-        systemThemeMedia.addListener(handleSystemThemeChange);
     }
 
     if (!isAuthed) {
