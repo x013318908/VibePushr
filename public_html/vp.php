@@ -741,7 +741,7 @@ function scan_dirs(): array
         if ($rel === '' || $rel === LOG_FILE_NAME || $rel === basename(__FILE__)) {
             continue;
         }
-        if (path_has_hidden_segment($rel)) {
+        if (path_has_internal_segment($rel)) {
             continue;
         }
 
@@ -775,11 +775,11 @@ function scan_dirs(): array
     return array_values($stats);
 }
 
-function path_has_hidden_segment(string $path): bool
+function path_has_internal_segment(string $path): bool
 {
     $segments = explode('/', $path);
     foreach ($segments as $segment) {
-        if ($segment !== '' && $segment[0] === '.') {
+        if ($segment === PRIVATE_DIR_NAME || $segment === JOB_DIR_NAME) {
             return true;
         }
     }
@@ -1207,6 +1207,7 @@ h1 { margin: 0 0 6px; font-size: 1.6rem; }
 h2 { margin: 0 0 10px; font-size: 1.1rem; }
 .small { font-size: 0.9rem; color: var(--muted); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row-end { justify-content: flex-end; }
 input, button, select {
     border: 1px solid var(--line-strong);
     border-radius: 8px;
@@ -1330,7 +1331,7 @@ input:focus, button:focus, select:focus, a:focus {
 <div class="container">
     <div class="card">
         <?php if (is_authed()): ?>
-        <form id="logoutForm" method="post" class="row">
+        <form id="logoutForm" method="post" class="row row-end">
             <input type="hidden" name="csrf_token" value="<?= h($csrfToken) ?>">
             <button type="submit"><?= h(t('logout')) ?></button>
         </form>

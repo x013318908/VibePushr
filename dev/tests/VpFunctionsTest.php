@@ -174,7 +174,8 @@ final class VpFunctionsTest extends TestCase
         $this->assertStringContainsString('async function refreshSelectionIfNeeded()', $this->vpSource);
         $this->assertStringContainsString('return true;', $this->vpSource);
         $this->assertStringContainsString('appendLog(i18n.upload_blocked_hint, true);', $this->vpSource);
-        $this->assertStringContainsString('startSyncBtn.disabled = false;', $this->vpSource);
+        $this->assertStringContainsString('function updateSyncButtonsBySelection()', $this->vpSource);
+        $this->assertStringContainsString('updateSyncButtonsBySelection();', $this->vpSource);
         $this->assertStringContainsString('folderInput.addEventListener(\'change\', () => {', $this->vpSource);
     }
 }
