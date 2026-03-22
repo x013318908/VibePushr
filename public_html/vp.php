@@ -1247,7 +1247,6 @@ input:focus, button:focus, select:focus, a:focus {
     max-height: 200px;
     overflow-y: auto;
     border: 1px dashed var(--line);
-    border-radius: 8px;
     background: var(--surface);
     padding: 8px;
     white-space: pre-wrap;
@@ -1291,6 +1290,7 @@ input:focus, button:focus, select:focus, a:focus {
     border: 1px dashed var(--line-strong);
     background: var(--surface);
     color: var(--text);
+    margin: 0 0 8px 0;
     padding: 12px 14px;
     border-radius: 10px;
 }
@@ -1933,6 +1933,8 @@ input:focus, button:focus, select:focus, a:focus {
             await runSync(selectedFiles(), { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
             appendLog(`upload error: ${localizeErrorMessage(error.message)}`, true);
+        } finally {
+            await loadDirs();
         }
     });
 
@@ -1945,6 +1947,8 @@ input:focus, button:focus, select:focus, a:focus {
             await runSync(selectedFiles(), { dryRun: true, force: false, trackFailed: false });
         } catch (error) {
             appendLog(`dry-run error: ${localizeErrorMessage(error.message)}`, true);
+        } finally {
+            await loadDirs();
         }
     });
 
@@ -1978,6 +1982,8 @@ input:focus, button:focus, select:focus, a:focus {
             await runSync(retry, { dryRun: false, force: false, trackFailed: true });
         } catch (error) {
             appendLog(`retry error: ${localizeErrorMessage(error.message)}`, true);
+        } finally {
+            await loadDirs();
         }
     });
 
