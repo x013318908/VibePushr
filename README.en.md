@@ -48,7 +48,7 @@ That’s it.
 
 ## Recommended Security Operation
 
-- On deployment, rename the `vp` portion of `vp.php` to a non-guessable custom name (for example, `a8k3push.php`).
+- On deployment, rename `vp.php` to a memorable but sufficiently long custom name (for example, `my-team-sync-gateway.php`).
 - Renaming the file should not change behavior: login, sync, and dry-run continue to work.
 
 ---
@@ -106,11 +106,11 @@ During first launch, you set an admin password.
 
 The password hash is stored in:
 
-- `public_html/.vp_auth.php`
+- `public_html/.vp_data/.vp_auth.php`
 
 Login protection status is stored in:
 
-- `public_html/.vp_login_guard.json`
+- `public_html/.vp_data/.vp_login_guard.json`
 
 If the login guard locks access, you can recover by removing the JSON file via FTP.
 

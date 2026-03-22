@@ -22,7 +22,7 @@ AIで作ったコードを、その勢いのままサーバーに反映できま
 
 ## セキュリティ運用の推奨
 
-- 配置時は `vp.php` の `vp` 部分を推測されにくい任意名へ変更することを推奨します（例: `a8k3push.php`）。
+- 配置時は `vp.php` を、運用者が覚えやすく十分に長い任意名へ変更することを推奨します（例: `foruda-appuro-do.php` / `appu-sagyo-iriguchi.php`）。
 - ファイル名を変更しても、VibePushr のログイン・同期・dry-run はそのまま動作します。
 
 ## Directory Layout
@@ -60,8 +60,8 @@ AIで作ったコードを、その勢いのままサーバーに反映できま
 ## Auth Note
 
 - 初回起動時セットアップで管理パスワードを設定します。
-- 設定されたハッシュは `public_html/.vp_auth.php` に保存され、以後はその値で認証します。
-- ログイン失敗回数上限または長期間未使用でロックされた場合は、`public_html/.vp_login_guard.json` を FTP 等で削除すると復旧できます。
+- 設定されたハッシュは `public_html/.vp_data/.vp_auth.php` に保存され、以後はその値で認証します。
+- ログイン失敗回数上限または長期間未使用でロックされた場合は、`public_html/.vp_data/.vp_login_guard.json` を FTP 等で削除すると復旧できます。
 
 ## License
 
