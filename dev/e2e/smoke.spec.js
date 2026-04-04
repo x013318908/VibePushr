@@ -1,6 +1,10 @@
 const { test, expect } = require('@playwright/test');
 const { getEntrypointPath } = require('./helpers/entrypoint');
 
+const setupHeadingPattern = /^(初回セットアップ|Initial Setup)$/;
+const loginHeadingPattern = /^(ログイン|Login)$/;
+const syncHeadingPattern = /^(フォルダーアップロード|Folder Upload)$/;
+
 async function isVisible(locator) {
   try {
     return await locator.isVisible();
@@ -12,20 +16,32 @@ async function isVisible(locator) {
 async function ensureAuthed(page) {
   await page.goto(getEntrypointPath());
 
-  const syncHeading = page.getByRole('heading', { level: 2, name: 'フォルダー同期' });
+  const syncHeading = page.getByRole('heading', { level: 2, name: syncHeadingPattern });
   if (await isVisible(syncHeading)) return { ok: true };
 
-  const setupHeading = page.getByRole('heading', { level: 2, name: '初回セットアップ' });
+  const setupHeading = page.getByRole('heading', { level: 2, name: setupHeadingPattern });
   if (await isVisible(setupHeading)) {
     const password = process.env.VP_E2E_PASSWORD || 'playwright-pass-1234';
     await page.locator('#setupForm input[name="password"]').fill(password);
     await page.locator('#setupForm input[name="password_confirm"]').fill(password);
     await page.locator('#setupForm button[type="submit"]').click();
+    const setupError = page.locator('#setupError');
+    if (await setupError.isVisible().catch(() => false)) {
+      const message = (await setupError.textContent()) || '';
+      if (message.includes('already_configured')) {
+        await page.goto(getEntrypointPath());
+      }
+    }
+    if (await isVisible(loginHeading)) {
+      const passwordAfterSetup = process.env.VP_E2E_PASSWORD || 'playwright-pass-1234';
+      await page.locator('#loginForm input[name="password"]').fill(passwordAfterSetup);
+      await page.locator('#loginForm button[type="submit"]').click();
+    }
     await expect(syncHeading).toBeVisible();
     return { ok: true };
   }
 
-  const loginHeading = page.getByRole('heading', { level: 2, name: 'ログイン' });
+  const loginHeading = page.getByRole('heading', { level: 2, name: loginHeadingPattern });
   if (await isVisible(loginHeading)) {
     const password = process.env.VP_E2E_PASSWORD || '';
     if (!password) return { ok: false, reason: 'login_required_set_VP_E2E_PASSWORD' };
@@ -41,15 +57,15 @@ async function ensureAuthed(page) {
 
 test('entrypoint loads', async ({ page }) => {
   await page.goto(getEntrypointPath());
-  await expect(page.getByRole('heading', { level: 1, name: 'VibePushr' })).toBeVisible();
+  await expect(page).toHaveTitle('VibePushr');
 });
 
 test('auth view or app view is visible', async ({ page }) => {
   await page.goto(getEntrypointPath());
 
-  const setupHeading = page.getByRole('heading', { level: 2, name: '初回セットアップ' });
-  const loginHeading = page.getByRole('heading', { level: 2, name: 'ログイン' });
-  const syncHeading = page.getByRole('heading', { level: 2, name: 'フォルダー同期' });
+  const setupHeading = page.getByRole('heading', { level: 2, name: setupHeadingPattern });
+  const loginHeading = page.getByRole('heading', { level: 2, name: loginHeadingPattern });
+  const syncHeading = page.getByRole('heading', { level: 2, name: syncHeadingPattern });
 
   const visibleCount = [
     await setupHeading.isVisible().catch(() => false),

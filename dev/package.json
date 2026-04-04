@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.js",
+    "test:e2e:client-read-error": "playwright test e2e/client-read-error.spec.js",
     "test:e2e:ui": "playwright test --ui",
     "pw:install": "playwright install chromium"
   },

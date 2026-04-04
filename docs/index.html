@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VibePushr - Download</title>
-  <meta name="description" content="VibePushr is a single-file PHP app. Download vp.php and upload it to your server.">
+  <meta name="description" content="VibePushr is a single-file PHP app. Download the latest vp.php and upload it to your server.">
   <style>
     :root {
       color-scheme: light dark;
@@ -117,11 +117,13 @@
   <main class="wrap">
     <section class="card">
       <h1>VibePushr</h1>
-      <p class="muted">Single-file PHP app for folder sync. Upload one file: <code>vp.php</code>. Current release: <code>v0.1.8</code>.</p>
+      <p class="muted">Single-file PHP app for folder sync. Download the latest GitHub Release asset and upload one file: <code>vp.php</code>.</p>
       <div class="buttons">
-        <a class="btn primary" href="https://github.com/x013318908/VibePushr/releases/download/v0.1.8/vp.php" rel="noopener noreferrer">Download vp.php (v0.1.8)</a>
+        <a class="btn primary" href="https://github.com/x013318908/VibePushr/releases/latest/download/vp.php" rel="noopener noreferrer">Download latest vp.php</a>
         <a class="btn" href="https://github.com/x013318908/VibePushr/releases/latest" target="_blank" rel="noopener noreferrer">Release Page</a>
         <a class="btn" href="https://github.com/x013318908/VibePushr" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
+        <a class="btn" href="../CHANGELOG.md">Changelog</a>
+        <a class="btn" href="../SECURITY.md">Security</a>
       </div>
     </section>
 
@@ -132,6 +134,15 @@
         <li>Upload <code>vp.php</code> to your server (for example under <code>public_html</code>).</li>
         <li>Open <code>vp.php</code> in your browser.</li>
         <li>Set your admin password on first launch.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Release Readiness</h2>
+      <ol>
+        <li>Run <code>./scripts/check.ps1</code> from the repository root.</li>
+        <li>Run the manual browser checks from <code>docs/release-checklist.md</code> before publishing.</li>
+        <li>Keep the Git tag, GitHub Release title, and attached <code>vp.php</code> asset on the same version string.</li>
       </ol>
     </section>
 

@@ -36,13 +36,32 @@ VibePushr sits in the middle.
 
 ---
 
+## Target Environment
+
+- Intended for servers running PHP 8.2 or later.
+- Assumes you can upload a single PHP file through FTP or a hosting file manager.
+- Best suited for lightweight hosting such as XREA-class shared environments.
+- The only production artifact is `public_html/vp.php`. Everything under `dev/` is for development only.
+
+---
+
 ## Installation
 
-1. Upload `public_html/vp.php` to your server.
-2. Open it in your browser.
-3. Complete the initial setup and set an admin password.
+1. Download the latest `vp.php` from GitHub Releases.
+2. Upload `public_html/vp.php` to your server.
+3. Open it in your browser.
+4. Complete the initial setup and set an admin password.
 
 That’s it.
+
+---
+
+## Update
+
+1. Download the latest `vp.php` from GitHub Releases.
+2. Replace the existing `vp.php` on your server.
+3. Open it in your browser.
+4. Verify login, dry-run, and a small sync before calling the update complete.
 
 ---
 
@@ -50,6 +69,7 @@ That’s it.
 
 - On deployment, rename `vp.php` to a memorable but sufficiently long custom name (for example, `my-team-sync-gateway.php`).
 - Renaming the file should not change behavior: login, sync, and dry-run continue to work.
+- See [SECURITY.md](SECURITY.md) for reporting guidance and operator recommendations.
 
 ---
 
@@ -70,8 +90,8 @@ Only `vp.php` is required for deployment.
 - `./scripts/test.ps1` — run PHPUnit
 - `./scripts/audit.ps1` — dependency audit
 - `./scripts/check.ps1` — run all checks
-
----
+- `cd dev; npm run test:e2e:smoke` — run the release smoke checks
+- `cd dev; npm run test:e2e:client-read-error` — verify retry and recovery behavior
 
 ---
 
@@ -80,6 +100,7 @@ Only `vp.php` is required for deployment.
 GitHub Actions runs lint and PHPUnit on pushes and pull requests.
 
 - `.github/workflows/ci.yml`
+- Playwright E2E remains a manual pre-release verification step.
 
 ---
 
@@ -88,6 +109,8 @@ GitHub Actions runs lint and PHPUnit on pushes and pull requests.
 - Main application code lives in `public_html/vp.php`.
 - Tests and dependencies are isolated under `dev/`.
 - The production artifact remains a single file.
+- See [docs/release-checklist.md](docs/release-checklist.md) for the release checklist.
+- See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ---
 
@@ -104,6 +127,8 @@ Login protection status is stored in:
 - `public_html/.vp_data/.vp_login_guard.json`
 
 If the login guard locks access, you can recover by removing the JSON file via FTP.
+
+Other runtime state is also stored under `public_html/.vp_data/`.
 
 ---
 
