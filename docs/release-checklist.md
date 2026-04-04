@@ -50,4 +50,4 @@ Before publishing:
 2. Attach `vp.php` as the release asset.
 3. Review `CHANGELOG.md`, `README.md`, `README.en.md`, and `docs/index.html` for version-agnostic guidance and broken links.
 4. Confirm `SECURITY.md` is still accurate for the current reporting path.
-5. Start from `docs/release-notes-v0.1.8.md` when drafting the GitHub Release body.
+5. Start from `docs/release-notes-v0.1.9.md` when drafting the GitHub Release body.

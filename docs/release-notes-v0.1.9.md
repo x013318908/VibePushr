@@ -1,4 +1,4 @@
-# VibePushr v0.1.8
+# VibePushr v0.1.9
 
 VibePushr is a single-file PHP tool for fast folder publishing.
 
@@ -20,7 +20,7 @@ Upload `vp.php` to your server, open it in a browser, and complete initial setup
 
 ## Recommended release notes summary
 
-VibePushr v0.1.8 improves release readiness around documentation, security guidance, and browser-level verification. It also makes the Playwright-based pre-release checks work more reliably across platforms.
+VibePushr v0.1.9 improves release readiness around documentation, security guidance, and browser-level verification. It also makes the Playwright-based pre-release checks work more reliably across platforms.
 
 ## Verification used for this release candidate
 
@@ -33,5 +33,5 @@ VibePushr v0.1.8 improves release readiness around documentation, security guida
 ## Manual follow-up before publishing
 
 - Attach `vp.php` to the GitHub Release.
-- Confirm the Git tag and release title both use `v0.1.8`.
+- Confirm the Git tag and release title both use `v0.1.9`.
 - Run the server-side checks in `docs/release-checklist.md`.
