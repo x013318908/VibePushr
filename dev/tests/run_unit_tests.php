@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 define('VP_UNIT_TEST_MODE', true);
-require __DIR__ . '/../vp.php';
+require __DIR__ . '/../../public_html/vp.php';
 
 final class TestRunner
 {
@@ -55,11 +55,11 @@ $t->assertTrue(is_string($tmpFile) && $tmpFile !== '', 'temporary test file path
 
 if (is_string($tmpFile)) {
     $created = write_atomic($tmpFile, "first\n", 1700000000);
-    $t->assertTrue($created, 'write_atomic creates file');
+    $t->assertSame('ok', $created, 'write_atomic creates file');
     $t->assertSame("first\n", (string) @file_get_contents($tmpFile), 'write_atomic stores first content');
 
     $overwritten = write_atomic($tmpFile, "second\n", 1700000001);
-    $t->assertTrue($overwritten, 'write_atomic overwrites existing file');
+    $t->assertSame('ok', $overwritten, 'write_atomic overwrites existing file');
     $t->assertSame("second\n", (string) @file_get_contents($tmpFile), 'write_atomic stores overwritten content');
 }
 
