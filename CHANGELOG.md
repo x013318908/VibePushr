@@ -4,6 +4,8 @@ All notable changes to VibePushr will be documented in this file.
 
 ## Unreleased
 
+- Documented the recommended upload workflow of creating a reviewed release folder before selecting files in VibePushr.
+
 ## v0.1.9
 
 - Release docs were expanded for first-time setup, update, recovery, and manual release verification.
