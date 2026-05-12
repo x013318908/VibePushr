@@ -73,6 +73,19 @@ That’s it.
 
 ---
 
+## Recommended Upload Workflow
+
+Project folders often contain files that should not be uploaded to a server, such as development-only files, API keys, AI-agent notes, or unpublished drafts.
+Instead of selecting the working folder directly, create a separate release folder that contains only the files you are comfortable publishing, then upload that folder with VibePushr.
+
+1. Ask your AI agent to create a release folder with only the files that are safe to upload.
+2. Review the generated release folder and confirm that it does not include secrets or unnecessary files.
+3. In VibePushr, select that release folder, run a dry-run, and then upload it.
+
+This repository does not require that workflow for its own development, but it is a safe and easy-to-understand way to use VibePushr.
+
+---
+
 ## Directory Layout
 
 - `public_html/vp.php` — deployable single-file application
